@@ -505,9 +505,10 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
         INTO @lv_trfunction.
       
       IF sy-subrc = 0.
-        " Check if it's a sub-task (function 'X', 'S', 'T') vs main transport ('K', 'W')
-        IF lv_trfunction = 'X' OR lv_trfunction = 'S' OR lv_trfunction = 'T'.
-          MESSAGE |Transport { lv_transport } is a sub-task. Please select the main transport request instead.| TYPE 'E'.
+        " Check if it's a sub-task (any function other than 'K'=Customizing or 'W'=Workbench)
+        " Sub-tasks typically have functions like: 'X'=Development, 'S'=Repair, 'T'=Transport of copies, etc.
+        IF lv_trfunction <> 'K' AND lv_trfunction <> 'W'.
+          MESSAGE |Transport { lv_transport } is a sub-task (function: { lv_trfunction }). Please select the main transport request instead.| TYPE 'E'.
           RETURN.
         ENDIF.
       ELSE.

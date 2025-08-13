@@ -886,7 +886,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     DATA: ls_log_header TYPE bal_s_log,
           ls_msg        TYPE bal_s_msg,
           lv_transport  TYPE string,
-          lt_context    TYPE bal_t_cont,
+          lt_context    TYPE STANDARD TABLE OF bal_s_cont WITH EMPTY KEY,
           ls_context    TYPE bal_s_cont,
           ls_stage_item TYPE zif_abapgit_definitions=>ty_stage.
 
