@@ -142,6 +142,11 @@ CLASS zcl_abapgit_gui_page_commit DEFINITION
     METHODS get_transport_from_stage
       RETURNING
         VALUE(rv_transport) TYPE string.
+    METHODS get_transport_description
+      IMPORTING
+        iv_transport                TYPE string
+      RETURNING
+        VALUE(rv_description) TYPE string.
 ENDCLASS.
 
 
@@ -527,12 +532,21 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       iv_key = c_id-comment
       iv_val = ms_commit-comment ).
 
-    " Auto-populate new branch name with main transport
+    " Auto-populate new branch name and comment with main transport
     DATA(lv_transport) = get_transport_from_stage( ).
     IF lv_transport IS NOT INITIAL AND lv_transport <> 'DIRECT_COMMIT'.
+      " Auto-populate branch name
       mo_form_data->set(
         iv_key = c_id-new_branch_name
         iv_val = |feature/{ lv_transport }| ).
+      
+      " Auto-populate comment with transport description if available
+      DATA(lv_transport_desc) = get_transport_description( lv_transport ).
+      IF lv_transport_desc IS NOT INITIAL.
+        mo_form_data->set(
+          iv_key = c_id-comment
+          iv_val = lv_transport_desc ).
+      ENDIF.
     ENDIF.
 
   ENDMETHOD.
@@ -556,7 +570,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       iv_required    = abap_true
       iv_min         = lc_commitmsg_comment_min_len
       iv_max         = lv_commitmsg_comment_length
-      iv_placeholder = |You can add US Story details here...|
+      iv_placeholder = |Auto-filled from transport description or add your own...|
     )->textarea(
       iv_name        = c_id-body
       iv_label       = 'Technical Summary'
@@ -1034,6 +1048,37 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     IF strlen( rv_transport ) > 20.
       rv_transport = rv_transport(20).
     ENDIF.
+    
+  ENDMETHOD.
+
+
+  METHOD get_transport_description.
+    
+    DATA: lv_as4text TYPE e07t-as4text.
+    
+    " Return empty if no transport provided
+    IF iv_transport IS INITIAL OR iv_transport = 'DIRECT_COMMIT' OR iv_transport = 'NO_TRANSPORT'.
+      RETURN.
+    ENDIF.
+    
+    " Get transport description from E07T table
+    SELECT SINGLE as4text
+      FROM e07t
+      WHERE trkorr = @iv_transport
+        AND langu = @sy-langu
+      INTO @lv_as4text.
+    
+    " If not found in current language, try English
+    IF sy-subrc <> 0.
+      SELECT SINGLE as4text
+        FROM e07t
+        WHERE trkorr = @iv_transport
+          AND langu = 'E'
+        INTO @lv_as4text.
+    ENDIF.
+    
+    " Return description (max 60 chars as per SAP standard)
+    rv_description = lv_as4text.
     
   ENDMETHOD.
 
