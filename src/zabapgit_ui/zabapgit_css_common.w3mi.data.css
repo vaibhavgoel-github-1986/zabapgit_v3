@@ -1459,6 +1459,16 @@ table.unit_tests {
   padding: 10px;
   font-family: Arial,Helvetica,sans-serif;
 }
+
+/* Placeholder styling for better visibility */
+input::placeholder {
+  color: #666;
+  opacity: 1; /* Override default opacity in Firefox */
+}
+textarea::placeholder {
+  color: #666;
+  opacity: 1; /* Override default opacity in Firefox */
+}
 .dialog .radio-container input[type="radio"] {
   visibility: hidden;
   display: none;

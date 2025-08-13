@@ -237,7 +237,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
      WHERE name = 'Z_CODE_REVIEWERS'.
     IF sy-subrc IS INITIAL.
       LOOP AT lt_users INTO ls_user.
-        APPEND ls_user-low TO lt_reviewers.
+        APPEND to_lower( ls_user-low ) TO lt_reviewers.
       ENDLOOP.
       MESSAGE |Found { lines( lt_reviewers ) } reviewer(s) in configuration| TYPE 'S'.
       write_application_log(
@@ -252,7 +252,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     
     " Remove current user from reviewer list (prevent self-review)
     DATA: lv_current_user_cisco TYPE string.
-    lv_current_user_cisco = |{ sy-uname }_cisco|.
+    lv_current_user_cisco = to_lower( |{ sy-uname }_cisco| ).
     
     DELETE lt_reviewers WHERE table_line = lv_current_user_cisco.
     
@@ -292,7 +292,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         write_application_log(
           iv_log_type = 'I'
           iv_message  = 'Starting pull request creation'
-          iv_detail   = |Branch: { lv_head_branch }, Target: { zcl_abapgit_git_branch_utils=>get_display_name( iv_target_branch ) }| ).
+          iv_detail   = |{ lv_head_branch } -> | &&
+                        |{ zcl_abapgit_git_branch_utils=>get_display_name( iv_target_branch ) }| ).
         
         DATA: lv_pr_number TYPE i.
         
@@ -577,7 +578,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     ro_form->text(
       iv_name        = c_id-new_branch_name
       iv_label       = 'New Branch Name'
-      iv_placeholder = 'Enter a new feature branch: feature/(Sub-Task Number)'
+      iv_placeholder = 'Enter a new feature branch: feature/O2CSM-XXXXX'
       iv_required    = abap_true
       iv_condense    = abap_true ).
 
@@ -767,7 +768,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
                 EXCEPTIONS
                   OTHERS           = 1.
               
-              zcx_abapgit_exception=>raise( |Please follow a pattern like: feature/(Sub-Task Number)| ).
+              zcx_abapgit_exception=>raise( |Please follow a pattern like: feature/O2CSM-XXXXX| ).
             ENDIF.
 
             " Store the original branch before creating new one
