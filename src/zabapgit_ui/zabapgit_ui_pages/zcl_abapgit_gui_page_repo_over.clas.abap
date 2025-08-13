@@ -171,6 +171,14 @@ CLASS zcl_abapgit_gui_page_repo_over DEFINITION
     METHODS save_settings
       RAISING
         zcx_abapgit_exception.
+
+    METHODS find_main_branch_for_display
+      IMPORTING
+        ii_repo        TYPE REF TO zif_abapgit_repo
+      RETURNING
+        VALUE(rv_branch) TYPE string
+      RAISING
+        zcx_abapgit_exception.
 ENDCLASS.
 
 
@@ -380,6 +388,7 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_REPO_OVER IMPLEMENTATION.
   METHOD map_repo_list_to_overview.
 
     DATA ls_overview      LIKE LINE OF rt_overview.
+    DATA lv_display_branch TYPE string.
     FIELD-SYMBOLS <ls_repo> LIKE LINE OF it_repo_obj_list.
 
     LOOP AT it_repo_obj_list ASSIGNING <ls_repo>.
@@ -394,7 +403,15 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_REPO_OVER IMPLEMENTATION.
       ls_overview-labels          = zcl_abapgit_repo_labels=>split( <ls_repo>->ms_data-local_settings-labels ).
       ls_overview-url             = <ls_repo>->ms_data-url.
       ls_overview-package         = <ls_repo>->ms_data-package.
-      ls_overview-branch          = <ls_repo>->ms_data-branch_name.
+      
+      " Set branch display preference: show release branch if available, otherwise current branch
+      lv_display_branch = find_main_branch_for_display( <ls_repo> ).
+      IF lv_display_branch IS NOT INITIAL.
+        ls_overview-branch = lv_display_branch.
+      ELSE.
+        ls_overview-branch = <ls_repo>->ms_data-branch_name.
+      ENDIF.
+      
       ls_overview-created_by      = <ls_repo>->ms_data-created_by.
       ls_overview-write_protected = <ls_repo>->ms_data-local_settings-write_protected.
       ls_overview-flow            = <ls_repo>->ms_data-local_settings-flow.
@@ -1143,6 +1160,43 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_REPO_OVER IMPLEMENTATION.
     register_deferred_script( render_scripts( ) ).
     register_deferred_script( zcl_abapgit_gui_chunk_lib=>render_repo_palette( c_action-select ) ).
     register_handlers( ).
+
+  ENDMETHOD.
+
+
+  METHOD find_main_branch_for_display.
+
+    DATA lo_repo_online TYPE REF TO zif_abapgit_repo_online.
+    DATA lo_branch_list TYPE REF TO zif_abapgit_git_branch_list.
+    DATA lt_branches TYPE zif_abapgit_git_definitions=>ty_git_branch_list_tt.
+    
+    FIELD-SYMBOLS <ls_branch> TYPE zif_abapgit_git_definitions=>ty_git_branch.
+
+    " Only process online repositories that can have remote branches
+    IF ii_repo->is_offline( ) = abap_true.
+      RETURN.
+    ENDIF.
+
+    TRY.
+        lo_repo_online ?= ii_repo.
+        
+        " Get list of available branches from the repository
+        lo_branch_list = zcl_abapgit_git_factory=>get_git_transport( )->branches( lo_repo_online->get_url( ) ).
+        lt_branches = lo_branch_list->get_branches_only( ).
+        
+        " Search for release branches matching pattern release/sha*
+        LOOP AT lt_branches ASSIGNING <ls_branch> WHERE display_name CP 'release/sha*'.
+          rv_branch = <ls_branch>-display_name.
+          RETURN.
+        ENDLOOP.
+        
+        " If no release branch found, return empty (will use current branch)
+        CLEAR rv_branch.
+        
+      CATCH zcx_abapgit_exception.
+        " If there's an error accessing branches, return empty
+        CLEAR rv_branch.
+    ENDTRY.
 
   ENDMETHOD.
 ENDCLASS.
