@@ -556,22 +556,19 @@ CLASS zcl_abapgit_popups IMPLEMENTATION.
 
   METHOD zif_abapgit_popups~popup_select_wb_tc_tr_and_tsk.
     DATA ls_selection  TYPE trwbo_selection.
-    DATA lv_title TYPE trwbo_title.
 
     ls_selection-trkorrpattern = space.
     ls_selection-connect_req_task_conditions = 'X'.
-    ls_selection-reqfunctions = 'KTRXS'.
+    ls_selection-reqfunctions = 'KQTXS'.
     ls_selection-reqstatus = 'RNODL'.
-    ls_selection-taskstatus = 'RNODL'.
+    ls_selection-taskstatus = 'RNOL'.
     CONDENSE ls_selection-reqfunctions NO-GAPS.
-    ls_selection-taskfunctions = 'QRSX'.
+    ls_selection-taskfunctions = 'SX'.
     CONCATENATE sy-sysid '*' INTO ls_selection-trkorrpattern.
-
-    lv_title = 'Select Transports / Tasks'.
 
     rt_r_trkorr = zif_abapgit_popups~popup_select_tr_requests(
       is_selection        = ls_selection
-      iv_title            = lv_title
+      iv_title            = 'Select Transport Requests and Tasks'
       iv_username_pattern = '*' ).
   ENDMETHOD.
 

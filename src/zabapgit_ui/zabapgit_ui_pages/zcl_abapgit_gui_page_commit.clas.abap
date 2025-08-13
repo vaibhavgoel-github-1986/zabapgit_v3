@@ -14,6 +14,7 @@ CLASS zcl_abapgit_gui_page_commit DEFINITION
         !ii_repo_online TYPE REF TO zif_abapgit_repo_online
         !io_stage       TYPE REF TO zcl_abapgit_stage
         !iv_sci_result  TYPE zif_abapgit_definitions=>ty_sci_result DEFAULT zif_abapgit_definitions=>c_sci_result-no_run
+        !ii_obj_filter  TYPE REF TO zif_abapgit_object_filter OPTIONAL
       RETURNING
         VALUE(ri_page)  TYPE REF TO zif_abapgit_gui_renderable
       RAISING
@@ -23,6 +24,7 @@ CLASS zcl_abapgit_gui_page_commit DEFINITION
         !ii_repo_online TYPE REF TO zif_abapgit_repo_online
         !io_stage       TYPE REF TO zcl_abapgit_stage
         !iv_sci_result  TYPE zif_abapgit_definitions=>ty_sci_result
+        !ii_obj_filter  TYPE REF TO zif_abapgit_object_filter OPTIONAL
       RAISING
         zcx_abapgit_exception.
 
@@ -59,6 +61,7 @@ CLASS zcl_abapgit_gui_page_commit DEFINITION
     DATA ms_commit TYPE zif_abapgit_services_git=>ty_commit_fields.
     DATA mv_sci_result TYPE zif_abapgit_definitions=>ty_sci_result.
     DATA mv_log_handle TYPE balloghndl.
+    DATA mi_obj_filter TYPE REF TO zif_abapgit_object_filter.
 
     METHODS render_stage_summary
       RETURNING
@@ -358,6 +361,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     mo_stage       = io_stage.
     mt_stage       = mo_stage->get_all( ).
     mv_sci_result  = iv_sci_result.
+    mi_obj_filter  = ii_obj_filter.
 
     " Get settings from DB
     mo_settings = zcl_abapgit_persist_factory=>get_settings( )->read( ).
@@ -378,7 +382,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       EXPORTING
         ii_repo_online = ii_repo_online
         io_stage       = io_stage
-        iv_sci_result  = iv_sci_result.
+        iv_sci_result  = iv_sci_result
+        ii_obj_filter  = ii_obj_filter.
 
     ri_page = zcl_abapgit_gui_page_hoc=>create(
       iv_page_title      = 'Commit'
@@ -910,7 +915,10 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       zcx_abapgit_exception=>raise( 'Failed to create application log' ).
     ENDIF.
 
-    " Write initial message with context
+    " Set the instance variable to avoid infinite loop
+    mv_log_handle = rv_log_handle.
+
+    " Write initial message with context (now safe since mv_log_handle is set)
     write_application_log(
       iv_log_type = 'S'
       iv_message  = 'PR Automation process started'
@@ -957,13 +965,40 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
 
   METHOD get_transport_from_stage.
     
-    DATA: ls_stage_item TYPE zif_abapgit_definitions=>ty_stage.
+    DATA: lo_transport_filter TYPE REF TO zcl_abapgit_object_filter_tran,
+          lv_package TYPE tadir-devclass,
+          lt_transport_range TYPE zif_abapgit_definitions=>ty_trrngtrkor_tt,
+          ls_stage_item TYPE zif_abapgit_definitions=>ty_stage,
+          ls_transport_entry LIKE LINE OF lt_transport_range.
     
-    " Try to extract transport from first staged object
+    " If we have a transport filter, get the transport from it (proper approach)
+    IF mi_obj_filter IS BOUND.
+      TRY.
+          lo_transport_filter ?= mi_obj_filter.
+          lo_transport_filter->get_filter_values(
+            IMPORTING
+              ev_package  = lv_package
+              et_r_trkorr = lt_transport_range ).
+          
+          " Get the transport from user selection (should be only one due to validation)
+          READ TABLE lt_transport_range INTO ls_transport_entry INDEX 1.
+          IF sy-subrc = 0.
+            rv_transport = ls_transport_entry-low.
+            " Ensure transport doesn't exceed SAP length limits
+            IF strlen( rv_transport ) > 20.
+              rv_transport = rv_transport(20).
+            ENDIF.
+            RETURN.
+          ENDIF.
+        CATCH cx_sy_move_cast_error.
+          " Not a transport filter, continue with fallback
+      ENDTRY.
+    ENDIF.
+    
+    " Fallback approach for direct commits (no transport filter)
     READ TABLE mt_stage INTO ls_stage_item INDEX 1.
     IF sy-subrc = 0 AND ls_stage_item-status-obj_type IS NOT INITIAL.
-      
-      " Try to get main transport from object (should be main transport due to validation)
+      " Get any transport containing this object (fallback approach)
       SELECT SINGLE trkorr
         FROM e071
         WHERE pgmid = 'R3TR'
@@ -972,16 +1007,14 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         INTO @rv_transport.
       
       IF sy-subrc <> 0.
-        " If no transport found, create a default sub-object
         rv_transport = 'NO_TRANSPORT'.
       ENDIF.
-      
     ELSE.
       " Fallback if no staged objects
       rv_transport = 'DIRECT_COMMIT'.
     ENDIF.
     
-    " Ensure sub-object doesn't exceed SAP length limits (typically 20 chars)
+    " Ensure transport doesn't exceed SAP length limits
     IF strlen( rv_transport ) > 20.
       rv_transport = rv_transport(20).
     ENDIF.

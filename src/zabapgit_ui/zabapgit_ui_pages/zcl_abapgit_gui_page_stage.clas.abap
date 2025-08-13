@@ -696,7 +696,8 @@ CLASS zcl_abapgit_gui_page_stage IMPLEMENTATION.
         rs_handled-page = zcl_abapgit_gui_page_commit=>create(
           ii_repo_online = mi_repo_online
           io_stage       = lo_stage
-          iv_sci_result  = mv_sci_result ).
+          iv_sci_result  = mv_sci_result
+          ii_obj_filter  = mi_obj_filter ).
 
         rs_handled-state = zcl_abapgit_gui=>c_event_state-new_page.
 
@@ -707,7 +708,8 @@ CLASS zcl_abapgit_gui_page_stage IMPLEMENTATION.
         rs_handled-page = zcl_abapgit_gui_page_commit=>create(
           ii_repo_online = mi_repo_online
           io_stage       = lo_stage
-          iv_sci_result  = mv_sci_result ).
+          iv_sci_result  = mv_sci_result
+          ii_obj_filter  = mi_obj_filter ).
 
         rs_handled-state = zcl_abapgit_gui=>c_event_state-new_page.
 
