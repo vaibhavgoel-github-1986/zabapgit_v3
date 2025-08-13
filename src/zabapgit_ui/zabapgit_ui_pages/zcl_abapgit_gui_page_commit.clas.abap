@@ -129,7 +129,7 @@ CLASS zcl_abapgit_gui_page_commit DEFINITION
         zcx_abapgit_exception.
     METHODS write_application_log
       IMPORTING
-        iv_log_type    TYPE c DEFAULT 'S'
+        iv_log_type    TYPE c DEFAULT 'I'
         iv_message     TYPE string
         iv_detail      TYPE string OPTIONAL
       RAISING
@@ -227,7 +227,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     " Get Reviewers from TVARVC table
     MESSAGE |Fetching reviewers from TVARVC table...| TYPE 'S'.
     write_application_log(
-      iv_log_type = 'S'
+      iv_log_type = 'I'
       iv_message  = 'Fetching reviewers from TVARVC table'
       iv_detail   = 'Table: TVARVC, Name: Z_CODE_REVIEWERS' ).
     
@@ -241,7 +241,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       ENDLOOP.
       MESSAGE |Found { lines( lt_reviewers ) } reviewer(s) in configuration| TYPE 'S'.
       write_application_log(
-        iv_log_type = 'S'
+        iv_log_type = 'I'
         iv_message  = 'Reviewers found in configuration'
         iv_detail   = |Count: { lines( lt_reviewers ) }| ).
     ELSE.
@@ -277,7 +277,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         " Create HTTP agent
         li_http_agent = zcl_abapgit_http_agent=>create( ).
         write_application_log(
-          iv_log_type = 'S'
+          iv_log_type = 'I'
           iv_message  = 'HTTP agent created for GitHub API'
           iv_detail   = 'Ready for PR creation' ).
         
@@ -290,7 +290,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         " Step 1: Create pull request as draft using form data
         MESSAGE |Creating pull request for branch { lv_head_branch }...| TYPE 'S'.
         write_application_log(
-          iv_log_type = 'S'
+          iv_log_type = 'I'
           iv_message  = 'Starting pull request creation'
           iv_detail   = |Branch: { lv_head_branch }, Target: { zcl_abapgit_git_branch_utils=>get_display_name( iv_target_branch ) }| ).
         
@@ -757,6 +757,16 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
                 iv_log_type = 'E'
                 iv_message  = 'Invalid branch name pattern'
                 iv_detail   = |Branch: { lv_new_branch_name }, Expected: feature/*| ).
+              
+              " Ensure log is saved before raising exception
+              CALL FUNCTION 'BAL_DB_SAVE'
+                EXPORTING
+                  i_client         = sy-mandt
+                  i_save_all       = abap_true
+                  i_t_log_handle   = VALUE bal_t_logh( ( mv_log_handle ) )
+                EXCEPTIONS
+                  OTHERS           = 1.
+              
               zcx_abapgit_exception=>raise( |Please follow a pattern like: feature/(Sub-Task Number)| ).
             ENDIF.
 
@@ -920,7 +930,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
 
     " Write initial message with context (now safe since mv_log_handle is set)
     write_application_log(
-      iv_log_type = 'S'
+      iv_log_type = 'I'
       iv_message  = 'PR Automation process started'
       iv_detail   = |Repo: { mi_repo_online->get_url( ) }| ).
 
@@ -938,8 +948,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
 
     " Prepare message
     ls_msg-msgty = iv_log_type.
-    ls_msg-msgid = 'SY'.
-    ls_msg-msgno = '001'.
+    ls_msg-msgid = 'ZMC_LOG'.
+    ls_msg-msgno = '000'.
     ls_msg-msgv1 = iv_message.
     ls_msg-msgv2 = iv_detail.
 
@@ -951,7 +961,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       EXCEPTIONS
         OTHERS       = 1.
 
-    " Also save to database immediately for audit trail
+    " Save to database immediately for audit trail (especially critical for errors)
     CALL FUNCTION 'BAL_DB_SAVE'
       EXPORTING
         i_client         = sy-mandt
@@ -959,6 +969,11 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         i_t_log_handle   = VALUE bal_t_logh( ( mv_log_handle ) )
       EXCEPTIONS
         OTHERS           = 1.
+        
+    " For error messages, commit the database transaction to ensure persistence
+    IF iv_log_type = 'E'.
+      COMMIT WORK.
+    ENDIF.
 
   ENDMETHOD.
 
