@@ -194,7 +194,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     
     IF sy-subrc <> 0.
       " Not a GitHub repository, skip PR creation
-      MESSAGE 'Automatic PR creation is only supported for GitHub repositories' TYPE 'I'.
+      MESSAGE 'Automatic PR creation is only supported for GitHub repositories' TYPE 'W'.
       RETURN.
     ENDIF.
     
@@ -206,7 +206,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     lv_head_branch = zcl_abapgit_git_branch_utils=>get_display_name( iv_source_branch ).
     
     " Get Reviewers from TVARVC table
-    MESSAGE |Fetching reviewers from TVARVC table...| TYPE 'I' DISPLAY LIKE 'S'.
+    MESSAGE |Fetching reviewers from TVARVC table...| TYPE 'S'.
     
     SELECT *
       FROM tvarvc
@@ -216,11 +216,11 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       LOOP AT lt_users INTO ls_user.
         APPEND ls_user-low TO lt_reviewers.
       ENDLOOP.
-      MESSAGE |Found { lines( lt_reviewers ) } reviewer(s) in configuration| TYPE 'I' DISPLAY LIKE 'S'.
+      MESSAGE |Found { lines( lt_reviewers ) } reviewer(s) in configuration| TYPE 'S'.
     ELSE.
       " Default to sekanaga_cisco if no reviewers configured
       APPEND 'sekanaga_cisco' TO lt_reviewers.
-      MESSAGE |No reviewers configured, defaulting to sekanaga_cisco| TYPE 'I' DISPLAY LIKE 'W'.
+      MESSAGE |No reviewers configured, defaulting to sekanaga_cisco| TYPE 'W'.
     ENDIF.
     
     " Remove current user from reviewer list (prevent self-review)
@@ -233,9 +233,9 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     IF lines( lt_reviewers ) = 0.
       " If current user was the only reviewer, add default
       APPEND 'sekanaga_cisco' TO lt_reviewers.
-      MESSAGE |Current user removed from reviewers, defaulting to sekanaga_cisco| TYPE 'I' DISPLAY LIKE 'W'.
+      MESSAGE |Current user removed from reviewers, defaulting to sekanaga_cisco| TYPE 'W'.
     ELSE.
-      MESSAGE |Current user ({ lv_current_user_cisco }) excluded from reviewer list| TYPE 'I' DISPLAY LIKE 'S'.
+      MESSAGE |Current user ({ lv_current_user_cisco }) excluded from reviewer list| TYPE 'S'.
     ENDIF.
     
     TRY.
@@ -249,7 +249,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
             ii_http_agent    = li_http_agent.
         
         " Step 1: Create pull request as draft using form data
-        MESSAGE |Creating pull request for branch { lv_head_branch }...| TYPE 'I' DISPLAY LIKE 'S'.
+        MESSAGE |Creating pull request for branch { lv_head_branch }...| TYPE 'S'.
         
         DATA: lv_pr_number TYPE i.
         
@@ -259,7 +259,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
           iv_head  = lv_head_branch
           iv_base  = zcl_abapgit_git_branch_utils=>get_display_name( iv_target_branch ) ).
         
-        MESSAGE |Pull request #{ lv_pr_number } created successfully| TYPE 'I' DISPLAY LIKE 'S'.
+        MESSAGE |Pull request #{ lv_pr_number } created successfully| TYPE 'S'.
         
         " Step 2: Assign reviewers (we always have reviewers due to default logic above)
         DATA: lv_reviewers_display TYPE string.
@@ -272,13 +272,13 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
           lv_reviewers_display = |{ lv_reviewers_display }{ lv_reviewer }|.
         ENDLOOP.
         
-        MESSAGE |Assigning reviewers: { lv_reviewers_display }| TYPE 'I' DISPLAY LIKE 'S'.
+        MESSAGE |Assigning reviewers: { lv_reviewers_display }| TYPE 'S'.
         
         li_pr_provider->assign_reviewers(
           iv_pull_number = lv_pr_number
           it_reviewers   = lt_reviewers ).
         
-        MESSAGE |Reviewers assigned successfully to PR #{ lv_pr_number }| TYPE 'I' DISPLAY LIKE 'S'.
+        MESSAGE |Reviewers assigned successfully to PR #{ lv_pr_number }| TYPE 'S'.
         
         " Final success message
         MESSAGE |Automation complete: PR #{ lv_pr_number } ready for review| TYPE 'S'.
