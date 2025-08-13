@@ -578,7 +578,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     ro_form->text(
       iv_name        = c_id-new_branch_name
       iv_label       = 'New Branch Name'
-      iv_placeholder = 'Enter a new feature branch'
+      iv_placeholder = 'feature/main-transport-num'
       iv_required    = abap_true
       iv_condense    = abap_true ).
 
@@ -752,6 +752,16 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
           lv_new_branch_name = mo_form_data->get( c_id-new_branch_name ).
           " create new branch and commit to it if branch name is not empty
           IF lv_new_branch_name IS NOT INITIAL.
+            " Validate the branch name follows feature/* pattern
+            IF lv_new_branch_name NP 'feature/*'.
+              write_application_log(
+                iv_log_type = 'E'
+                iv_message  = 'Invalid branch name pattern'
+                iv_detail   = |Branch: { lv_new_branch_name }, Expected pattern: feature/main-transport-num| ).
+
+              zcx_abapgit_exception=>raise( 'Branch name must follow pattern: feature/main-transport-num' ).
+            ENDIF.
+
             " Store the original branch before creating new one
             lv_original_branch = mi_repo_online->get_selected_branch( ).
 
