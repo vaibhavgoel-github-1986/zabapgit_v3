@@ -142,6 +142,11 @@ CLASS zcl_abapgit_gui_page_commit DEFINITION
     METHODS get_transport_from_stage
       RETURNING
         VALUE(rv_transport) TYPE string.
+    METHODS generate_transport_branch_name
+      IMPORTING
+        iv_transport TYPE string
+      RETURNING
+        VALUE(rv_branch_name) TYPE string.
 ENDCLASS.
 
 
@@ -527,6 +532,14 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       iv_key = c_id-comment
       iv_val = ms_commit-comment ).
 
+    " Auto-populate branch name based on transport
+    DATA(lv_transport) = get_transport_from_stage( ).
+    DATA(lv_suggested_branch) = generate_transport_branch_name( lv_transport ).
+    
+    mo_form_data->set(
+      iv_key = c_id-new_branch_name
+      iv_val = lv_suggested_branch ).
+
   ENDMETHOD.
 
 
@@ -575,10 +588,17 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
 *        iv_label       = 'Author Email' ).
 *    ENDIF.
 
+    " Get transport for dynamic placeholder
+    DATA(lv_transport_for_placeholder) = get_transport_from_stage( ).
+    DATA(lv_placeholder_text) = COND string(
+      WHEN lv_transport_for_placeholder IS NOT INITIAL AND lv_transport_for_placeholder <> 'DIRECT_COMMIT'
+      THEN |Enter branch name containing transport: feature/{ lv_transport_for_placeholder }|
+      ELSE 'Enter a new feature branch: feature/YOUR_TRANSPORT' ).
+
     ro_form->text(
       iv_name        = c_id-new_branch_name
       iv_label       = 'New Branch Name'
-      iv_placeholder = 'Enter a new feature branch: feature/O2CSM-XXXXX'
+      iv_placeholder = lv_placeholder_text
       iv_required    = abap_true
       iv_condense    = abap_true ).
 
@@ -752,6 +772,9 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
           lv_new_branch_name = mo_form_data->get( c_id-new_branch_name ).
           " create new branch and commit to it if branch name is not empty
           IF lv_new_branch_name IS NOT INITIAL.
+            " Get the MAIN transport for validation
+            DATA(lv_transport) = get_transport_from_stage( ).
+            
             " Validate the New Branch Name
             IF lv_new_branch_name NP 'feature/*'.
               write_application_log(
@@ -768,16 +791,38 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
                 EXCEPTIONS
                   OTHERS           = 1.
               
-              zcx_abapgit_exception=>raise( |Please follow a pattern like: feature/O2CSM-XXXXX| ).
+              zcx_abapgit_exception=>raise( |Please follow a pattern like: feature/{ lv_transport }| ).
+            ENDIF.
+            
+            " Validate that branch name contains the MAIN transport
+            IF lv_transport IS NOT INITIAL AND lv_transport <> 'DIRECT_COMMIT'.
+              IF lv_new_branch_name NS lv_transport.
+                write_application_log(
+                  iv_log_type = 'E'
+                  iv_message  = 'Branch name must contain MAIN transport'
+                  iv_detail   = |Branch: { lv_new_branch_name }, Required transport: { lv_transport }| ).
+                
+                " Ensure log is saved before raising exception
+                CALL FUNCTION 'BAL_DB_SAVE'
+                  EXPORTING
+                    i_client         = sy-mandt
+                    i_save_all       = abap_true
+                    i_t_log_handle   = VALUE bal_t_logh( ( mv_log_handle ) )
+                  EXCEPTIONS
+                    OTHERS           = 1.
+                
+                zcx_abapgit_exception=>raise( |Branch name must contain MAIN transport: { lv_transport }. Use: feature/{ lv_transport }| ).
+              ENDIF.
             ENDIF.
 
             " Store the original branch before creating new one
             lv_original_branch = mi_repo_online->get_selected_branch( ).
 
+            " Create new branch for this transport
             write_application_log(
               iv_log_type = 'S'
-              iv_message  = 'Creating new branch'
-              iv_detail   = |Branch: { lv_new_branch_name }, From: { lv_original_branch }| ).
+              iv_message  = 'Creating new branch for transport'
+              iv_detail   = |Transport: { lv_transport }, Branch: { lv_new_branch_name }, From: { lv_original_branch }| ).
 
             lv_new_branch_name = branch_name_to_internal( lv_new_branch_name ).
             " creates a new branch and automatically switches to it
@@ -785,8 +830,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
             
             write_application_log(
               iv_log_type = 'S'
-              iv_message  = 'Branch created successfully'
-              iv_detail   = |Internal name: { lv_new_branch_name }| ).
+              iv_message  = 'New transport branch created successfully'
+              iv_detail   = |Transport: { lv_transport }, Internal name: { lv_new_branch_name }| ).
           ENDIF.
 
           write_application_log(
@@ -1034,6 +1079,24 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     IF strlen( rv_transport ) > 20.
       rv_transport = rv_transport(20).
     ENDIF.
+    
+  ENDMETHOD.
+
+
+  METHOD generate_transport_branch_name.
+    " Generate a consistent branch name based on transport number
+    " Format: feature/{transport} (e.g., feature/SH8883)
+    IF iv_transport IS NOT INITIAL AND iv_transport <> 'DIRECT_COMMIT'.
+      rv_branch_name = |feature/{ iv_transport }|.
+    ELSE.
+      " Fallback to timestamp-based naming for direct commits
+      DATA lv_timestamp TYPE timestamp.
+      GET TIME STAMP FIELD lv_timestamp.
+      rv_branch_name = |feature/DIRECT-{ lv_timestamp }|.
+    ENDIF.
+    
+    " Ensure branch name follows Git naming conventions
+    REPLACE ALL OCCURRENCES OF ' ' IN rv_branch_name WITH '-'.
     
   ENDMETHOD.
 
