@@ -20,6 +20,8 @@ CLASS zcl_abapgit_pr_enum_github DEFINITION
         iv_body  TYPE clike OPTIONAL
         iv_head  TYPE string
         iv_base  TYPE string DEFAULT 'main'
+      RETURNING
+        VALUE(rv_pr_number) TYPE i
       RAISING
         zcx_abapgit_exception.
 
@@ -33,6 +35,12 @@ CLASS zcl_abapgit_pr_enum_github DEFINITION
     METHODS ready_for_review
       IMPORTING
         iv_pull_number TYPE i
+      RAISING
+        zcx_abapgit_exception.
+    METHODS assign_reviewers
+      IMPORTING
+        iv_pull_number TYPE i
+        it_reviewers   TYPE string_table
       RAISING
         zcx_abapgit_exception.
   PROTECTED SECTION.
@@ -181,6 +189,8 @@ CLASS ZCL_ABAPGIT_PR_ENUM_GITHUB IMPLEMENTATION.
     DATA lv_url      TYPE string.
     DATA lv_json     TYPE string.
     DATA li_response TYPE REF TO zif_abapgit_http_response.
+    DATA lr_json     TYPE REF TO zif_abapgit_ajson.
+    DATA lx_ajson    TYPE REF TO zcx_abapgit_ajson_error.
 
     lv_url = mv_repo_url && '/pulls'.
     SPLIT mv_user_and_repo AT '/' INTO lv_owner lv_repo.
@@ -204,6 +214,14 @@ CLASS ZCL_ABAPGIT_PR_ENUM_GITHUB IMPLEMENTATION.
     IF li_response->is_ok( ) = abap_false.
       zcx_abapgit_exception=>raise( |Error creating pull request: { li_response->error( ) }| ).
     ENDIF.
+
+    " Extract PR number from response
+    TRY.
+        lr_json = zcl_abapgit_ajson=>parse( li_response->data( ) ).
+        rv_pr_number = lr_json->get_integer( '/number' ).
+      CATCH zcx_abapgit_ajson_error INTO lx_ajson.
+        zcx_abapgit_exception=>raise_with_text( lx_ajson ).
+    ENDTRY.
 
   ENDMETHOD.
 
@@ -270,6 +288,49 @@ CLASS ZCL_ABAPGIT_PR_ENUM_GITHUB IMPLEMENTATION.
 
     IF li_response->is_ok( ) = abap_false.
       zcx_abapgit_exception=>raise( |Error updating pull request branch: { li_response->error( ) }| ).
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD assign_reviewers.
+* https://docs.github.com/en/rest/pulls/review-requests?apiVersion=2022-11-28#request-reviewers-for-a-pull-request
+
+    DATA lv_url      TYPE string.
+    DATA lv_json     TYPE string.
+    DATA li_response TYPE REF TO zif_abapgit_http_response.
+    DATA lv_reviewers_json TYPE string.
+    DATA lv_reviewer_list TYPE string.
+
+    " Build reviewers JSON array and create readable list
+    IF lines( it_reviewers ) > 0.
+      lv_reviewers_json = |"reviewers": [|.
+      LOOP AT it_reviewers INTO DATA(lv_reviewer).
+        IF sy-tabix > 1.
+          lv_reviewers_json = |{ lv_reviewers_json }, |.
+          lv_reviewer_list = |{ lv_reviewer_list }, |.
+        ENDIF.
+        lv_reviewers_json = |{ lv_reviewers_json }"{ lv_reviewer }"|.
+        lv_reviewer_list = |{ lv_reviewer_list }{ lv_reviewer }|.
+      ENDLOOP.
+      lv_reviewers_json = |{ lv_reviewers_json }]|.
+    ELSE.
+      " No reviewers to assign
+      RETURN.
+    ENDIF.
+
+    lv_url = mv_repo_url && '/pulls/' && iv_pull_number && '/requested_reviewers'.
+
+    lv_json = |\{\n| &&
+              |  { lv_reviewers_json }\n| &&
+              |\}|.
+
+    li_response = mi_http_agent->request(
+      iv_url     = lv_url
+      iv_method  = zif_abapgit_http_agent=>c_methods-post
+      iv_payload = lv_json ).
+
+    IF li_response->is_ok( ) = abap_false.
+      zcx_abapgit_exception=>raise( |Error assigning reviewers to pull request: { li_response->error( ) }| ).
     ENDIF.
 
   ENDMETHOD.

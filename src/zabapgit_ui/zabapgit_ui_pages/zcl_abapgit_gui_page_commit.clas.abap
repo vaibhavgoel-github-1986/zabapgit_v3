@@ -180,7 +180,10 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
           lv_head_branch   TYPE string,
           li_http_agent    TYPE REF TO zif_abapgit_http_agent,
           li_pr_provider   TYPE REF TO zcl_abapgit_pr_enum_github,
-          lx_error         TYPE REF TO zcx_abapgit_exception.
+          lx_error         TYPE REF TO zcx_abapgit_exception,
+          lt_reviewers     TYPE string_table,
+          lt_users         TYPE STANDARD TABLE OF tvarvc WITH DEFAULT KEY,
+          ls_user          TYPE tvarvc.
 
     " Get repository URL
     lv_repo_url = mi_repo_online->get_url( ).
@@ -202,6 +205,22 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     " Get clean branch names for PR
     lv_head_branch = zcl_abapgit_git_branch_utils=>get_display_name( iv_source_branch ).
     
+    " Get Reviewers from TVARVC table
+    MESSAGE |Fetching reviewers from TVARVC table...| TYPE 'I' DISPLAY LIKE 'S'.
+    
+    SELECT *
+      FROM tvarvc
+      INTO TABLE @lt_users
+     WHERE name = 'Z_CODE_REVIEWERS'.
+    IF sy-subrc IS INITIAL.
+      LOOP AT lt_users INTO ls_user.
+        APPEND ls_user-low TO lt_reviewers.
+      ENDLOOP.
+      MESSAGE |Found { lines( lt_reviewers ) } reviewer(s) in configuration| TYPE 'I' DISPLAY LIKE 'S'.
+    ELSE.
+      MESSAGE |No reviewers configured in TVARVC table| TYPE 'I' DISPLAY LIKE 'W'.
+    ENDIF.
+    
     TRY.
         " Create HTTP agent
         li_http_agent = zcl_abapgit_http_agent=>create( ).
@@ -212,14 +231,44 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
             iv_user_and_repo = lv_user_and_repo
             ii_http_agent    = li_http_agent.
         
-        " Create pull request as draft using form data
-        li_pr_provider->create_pull_request(
+        " Step 1: Create pull request as draft using form data
+        MESSAGE |Creating pull request for branch { lv_head_branch }...| TYPE 'I' DISPLAY LIKE 'S'.
+        
+        DATA: lv_pr_number TYPE i.
+        
+        lv_pr_number = li_pr_provider->create_pull_request(
           iv_title = iv_pr_title
           iv_body  = iv_pr_body
           iv_head  = lv_head_branch
           iv_base  = zcl_abapgit_git_branch_utils=>get_display_name( iv_target_branch ) ).
         
-        MESSAGE |Pull request created successfully for branch { lv_head_branch }| TYPE 'S'.
+        MESSAGE |Pull request #{ lv_pr_number } created successfully| TYPE 'I' DISPLAY LIKE 'S'.
+        
+        " Step 2: Assign reviewers if available
+        IF lines( lt_reviewers ) > 0.
+          DATA: lv_reviewers_display TYPE string.
+          
+          " Build reviewer list for display
+          LOOP AT lt_reviewers INTO DATA(lv_reviewer).
+            IF sy-tabix > 1.
+              lv_reviewers_display = |{ lv_reviewers_display }, |.
+            ENDIF.
+            lv_reviewers_display = |{ lv_reviewers_display }{ lv_reviewer }|.
+          ENDLOOP.
+          
+          MESSAGE |Assigning reviewers: { lv_reviewers_display }| TYPE 'I' DISPLAY LIKE 'S'.
+          
+          li_pr_provider->assign_reviewers(
+            iv_pull_number = lv_pr_number
+            it_reviewers   = lt_reviewers ).
+          
+          MESSAGE |Reviewers assigned successfully to PR #{ lv_pr_number }| TYPE 'I' DISPLAY LIKE 'S'.
+        ELSE.
+          MESSAGE |No reviewers found in TVARVC table (Z_CODE_REVIEWERS)| TYPE 'I' DISPLAY LIKE 'W'.
+        ENDIF.
+        
+        " Final success message
+        MESSAGE |Automation complete: PR #{ lv_pr_number } ready for review| TYPE 'S'.
         
       CATCH zcx_abapgit_exception INTO lx_error.
         MESSAGE |Error creating pull request: { lx_error->get_text( ) }| TYPE 'W'.
