@@ -884,37 +884,23 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
   METHOD create_application_log.
 
     DATA: ls_log_header TYPE bal_s_log,
-          ls_msg        TYPE bal_s_msg,
-          lv_transport  TYPE string,
-          lt_context    TYPE STANDARD TABLE OF bal_s_cont WITH EMPTY KEY,
-          ls_context    TYPE bal_s_cont,
-          ls_stage_item TYPE zif_abapgit_definitions=>ty_stage.
+          lv_transport  TYPE string.
 
     " Extract transport number from staged files
     lv_transport = get_transport_from_stage( ).
     
     " Create log header with new structure
     ls_log_header-extnumber = lv_transport.
-    ls_log_header-object    = 'ZCISCO'.
+    ls_log_header-object    = 'ZABAPGIT'.
     ls_log_header-subobject = 'ABAPGIT'.
     ls_log_header-aldate    = sy-datum.
     ls_log_header-altime    = sy-uzeit.
     ls_log_header-aluser    = sy-uname.
     
-    " Add staged objects to context
-    LOOP AT mt_stage INTO ls_stage_item.
-      " Add object in TADIR format to context
-      CLEAR ls_context.
-      ls_context-tabname = 'TADIR'.
-      ls_context-value = |{ ls_stage_item-status-obj_type }-{ ls_stage_item-status-obj_name }|.
-      APPEND ls_context TO lt_context.
-    ENDLOOP.
-
     " Create application log
     CALL FUNCTION 'BAL_LOG_CREATE'
       EXPORTING
         i_s_log      = ls_log_header
-        i_t_context  = lt_context
       IMPORTING
         e_log_handle = rv_log_handle
       EXCEPTIONS
@@ -924,11 +910,11 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       zcx_abapgit_exception=>raise( 'Failed to create application log' ).
     ENDIF.
 
-    " Write initial message
+    " Write initial message with context
     write_application_log(
       iv_log_type = 'S'
       iv_message  = 'PR Automation process started'
-      iv_detail   = |Repository: { mi_repo_online->get_url( ) }, Transport: { lv_transport }| ).
+      iv_detail   = |Repo: { mi_repo_online->get_url( ) }| ).
 
   ENDMETHOD.
 
