@@ -1462,12 +1462,21 @@ table.unit_tests {
 
 /* Placeholder styling for better visibility */
 input::placeholder {
-  color: #666;
-  opacity: 1; /* Override default opacity in Firefox */
+  color: #333 !important;
+  opacity: 1 !important; /* Override default opacity in Firefox */
 }
 textarea::placeholder {
-  color: #666;
-  opacity: 1; /* Override default opacity in Firefox */
+  color: #333 !important;
+  opacity: 1 !important; /* Override default opacity in Firefox */
+}
+/* More specific selectors for commit form */
+.dialog input::placeholder {
+  color: #333 !important;
+  opacity: 1 !important;
+}
+.dialog textarea::placeholder {
+  color: #333 !important;
+  opacity: 1 !important;
 }
 .dialog .radio-container input[type="radio"] {
   visibility: hidden;
