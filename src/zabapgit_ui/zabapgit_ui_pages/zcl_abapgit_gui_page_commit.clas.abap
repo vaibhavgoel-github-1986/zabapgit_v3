@@ -218,7 +218,24 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       ENDLOOP.
       MESSAGE |Found { lines( lt_reviewers ) } reviewer(s) in configuration| TYPE 'I' DISPLAY LIKE 'S'.
     ELSE.
-      MESSAGE |No reviewers configured in TVARVC table| TYPE 'I' DISPLAY LIKE 'W'.
+      " Default to sekanaga_cisco if no reviewers configured
+      APPEND 'sekanaga_cisco' TO lt_reviewers.
+      MESSAGE |No reviewers configured, defaulting to sekanaga_cisco| TYPE 'I' DISPLAY LIKE 'W'.
+    ENDIF.
+    
+    " Remove current user from reviewer list (prevent self-review)
+    DATA: lv_current_user_cisco TYPE string.
+    lv_current_user_cisco = |{ sy-uname }_cisco|.
+    
+    DELETE lt_reviewers WHERE table_line = lv_current_user_cisco.
+    
+    " Check if we still have reviewers after removing current user
+    IF lines( lt_reviewers ) = 0.
+      " If current user was the only reviewer, add default
+      APPEND 'sekanaga_cisco' TO lt_reviewers.
+      MESSAGE |Current user removed from reviewers, defaulting to sekanaga_cisco| TYPE 'I' DISPLAY LIKE 'W'.
+    ELSE.
+      MESSAGE |Current user ({ lv_current_user_cisco }) excluded from reviewer list| TYPE 'I' DISPLAY LIKE 'S'.
     ENDIF.
     
     TRY.
@@ -244,28 +261,24 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         
         MESSAGE |Pull request #{ lv_pr_number } created successfully| TYPE 'I' DISPLAY LIKE 'S'.
         
-        " Step 2: Assign reviewers if available
-        IF lines( lt_reviewers ) > 0.
-          DATA: lv_reviewers_display TYPE string.
-          
-          " Build reviewer list for display
-          LOOP AT lt_reviewers INTO DATA(lv_reviewer).
-            IF sy-tabix > 1.
-              lv_reviewers_display = |{ lv_reviewers_display }, |.
-            ENDIF.
-            lv_reviewers_display = |{ lv_reviewers_display }{ lv_reviewer }|.
-          ENDLOOP.
-          
-          MESSAGE |Assigning reviewers: { lv_reviewers_display }| TYPE 'I' DISPLAY LIKE 'S'.
-          
-          li_pr_provider->assign_reviewers(
-            iv_pull_number = lv_pr_number
-            it_reviewers   = lt_reviewers ).
-          
-          MESSAGE |Reviewers assigned successfully to PR #{ lv_pr_number }| TYPE 'I' DISPLAY LIKE 'S'.
-        ELSE.
-          MESSAGE |No reviewers found in TVARVC table (Z_CODE_REVIEWERS)| TYPE 'I' DISPLAY LIKE 'W'.
-        ENDIF.
+        " Step 2: Assign reviewers (we always have reviewers due to default logic above)
+        DATA: lv_reviewers_display TYPE string.
+        
+        " Build reviewer list for display
+        LOOP AT lt_reviewers INTO DATA(lv_reviewer).
+          IF sy-tabix > 1.
+            lv_reviewers_display = |{ lv_reviewers_display }, |.
+          ENDIF.
+          lv_reviewers_display = |{ lv_reviewers_display }{ lv_reviewer }|.
+        ENDLOOP.
+        
+        MESSAGE |Assigning reviewers: { lv_reviewers_display }| TYPE 'I' DISPLAY LIKE 'S'.
+        
+        li_pr_provider->assign_reviewers(
+          iv_pull_number = lv_pr_number
+          it_reviewers   = lt_reviewers ).
+        
+        MESSAGE |Reviewers assigned successfully to PR #{ lv_pr_number }| TYPE 'I' DISPLAY LIKE 'S'.
         
         " Final success message
         MESSAGE |Automation complete: PR #{ lv_pr_number } ready for review| TYPE 'S'.

@@ -79,7 +79,7 @@ ENDCLASS.
 
 
 
-CLASS ZCL_ABAPGIT_PR_ENUM_GITHUB IMPLEMENTATION.
+CLASS zcl_abapgit_pr_enum_github IMPLEMENTATION.
 
   METHOD constructor.
 
