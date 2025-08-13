@@ -147,6 +147,11 @@ CLASS zcl_abapgit_gui_page_commit DEFINITION
         iv_transport                TYPE string
       RETURNING
         VALUE(rv_description) TYPE string.
+    METHODS escape_json_string
+      IMPORTING
+        iv_input        TYPE string
+      RETURNING
+        VALUE(rv_output) TYPE string.
 ENDCLASS.
 
 
@@ -302,9 +307,18 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         
         DATA: lv_pr_number TYPE i.
         
+        " Sanitize PR body for JSON compatibility
+        DATA(lv_sanitized_body) = escape_json_string( iv_pr_body ).
+        
+        " Log the JSON escaping process for debugging
+        write_application_log(
+          iv_log_type = 'I'
+          iv_message  = 'PR body sanitized for JSON'
+          iv_detail   = |Original: { strlen( iv_pr_body ) } chars, Sanitized: { strlen( lv_sanitized_body ) } chars| ).
+        
         lv_pr_number = li_pr_provider->create_pull_request(
           iv_title = iv_pr_title
-          iv_body  = iv_pr_body
+          iv_body  = lv_sanitized_body
           iv_head  = lv_head_branch
           iv_base  = zcl_abapgit_git_branch_utils=>get_display_name( iv_target_branch ) ).
         
@@ -1079,6 +1093,58 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     
     " Return description (max 60 chars as per SAP standard)
     rv_description = lv_as4text.
+    
+  ENDMETHOD.
+
+
+  METHOD escape_json_string.
+    
+    DATA: lv_pos TYPE i,
+          lv_char TYPE c LENGTH 1,
+          lv_temp TYPE string.
+    
+    " Handle empty input
+    IF iv_input IS INITIAL.
+      rv_output = iv_input.
+      RETURN.
+    ENDIF.
+    
+    rv_output = iv_input.
+    
+    " Escape JSON special characters (order matters - backslash first!)
+    " 1. Escape backslashes first (must be first to avoid double-escaping)
+    REPLACE ALL OCCURRENCES OF '\' IN rv_output WITH '\\'.
+    
+    " 2. Escape double quotes
+    REPLACE ALL OCCURRENCES OF '"' IN rv_output WITH '\"'.
+    
+    " 3. Handle newline variations (common in multiline text)
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>cr_lf IN rv_output WITH '\n'.
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>newline IN rv_output WITH '\n'.
+    
+    " 4. Handle other control characters
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>horizontal_tab IN rv_output WITH '\t'.
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>backspace IN rv_output WITH '\b'.
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>form_feed IN rv_output WITH '\f'.
+    
+    " 5. Handle problematic characters by scanning and replacing
+    CLEAR lv_temp.
+    DO strlen( rv_output ) TIMES.
+      lv_pos = sy-index - 1.
+      lv_char = rv_output+lv_pos(1).
+      
+      " Check for problematic characters and replace with safe alternatives
+      CASE lv_char.
+        WHEN cl_abap_char_utilities=>vertical_tab.
+          " Replace vertical tab with regular tab
+          lv_temp = lv_temp && '\t'.
+        WHEN OTHERS.
+          " Keep the character as is
+          lv_temp = lv_temp && lv_char.
+      ENDCASE.
+    ENDDO.
+    
+    rv_output = lv_temp.
     
   ENDMETHOD.
 
