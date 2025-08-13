@@ -488,8 +488,33 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
 
     DATA lt_r_trkorr TYPE zif_abapgit_definitions=>ty_trrngtrkor_tt.
     DATA li_repo TYPE REF TO zif_abapgit_repo.
+    DATA ls_trkorr LIKE LINE OF lt_r_trkorr.
+    DATA lv_transport TYPE trkorr.
+    DATA lv_trfunction TYPE trfunction.
 
     lt_r_trkorr = zcl_abapgit_ui_factory=>get_popups( )->popup_select_wb_tc_tr_and_tsk( ).
+
+    " Validate that selected transports are main transports (not sub-tasks)
+    LOOP AT lt_r_trkorr INTO ls_trkorr.
+      lv_transport = ls_trkorr-low.
+      
+      " Check if transport is a main transport by querying E070
+      SELECT SINGLE trfunction
+        FROM e070
+        WHERE trkorr = @lv_transport
+        INTO @lv_trfunction.
+      
+      IF sy-subrc = 0.
+        " Check if it's a sub-task (function 'X', 'S', 'T') vs main transport ('K', 'W')
+        IF lv_trfunction = 'X' OR lv_trfunction = 'S' OR lv_trfunction = 'T'.
+          MESSAGE |Transport { lv_transport } is a sub-task. Please select the main transport request instead.| TYPE 'E'.
+          RETURN.
+        ENDIF.
+      ELSE.
+        MESSAGE |Transport { lv_transport } not found in system.| TYPE 'E'.
+        RETURN.
+      ENDIF.
+    ENDLOOP.
 
     li_repo = zcl_abapgit_repo_srv=>get_instance( )->get( iv_key ).
 
