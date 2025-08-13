@@ -115,6 +115,14 @@ CLASS zcl_abapgit_gui_page_commit DEFINITION
         VALUE(rv_main_branch) TYPE string
       RAISING
         zcx_abapgit_exception.
+    METHODS create_pull_request_auto
+      IMPORTING
+        iv_source_branch TYPE string
+        iv_target_branch TYPE string
+        iv_pr_title      TYPE string
+        iv_pr_body       TYPE string
+      RAISING
+        zcx_abapgit_exception.
 ENDCLASS.
 
 
@@ -160,6 +168,63 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       )->branches( mi_repo_online->get_url( )
       )->get_head_symref( ).
       
+  ENDMETHOD.
+
+
+  METHOD create_pull_request_auto.
+    
+    DATA: lv_repo_url      TYPE string,
+          lv_user_and_repo TYPE string,
+          lv_user          TYPE string,
+          lv_repo          TYPE string,
+          lv_head_branch   TYPE string,
+          li_http_agent    TYPE REF TO zif_abapgit_http_agent,
+          li_pr_provider   TYPE REF TO zcl_abapgit_pr_enum_github,
+          lx_error         TYPE REF TO zcx_abapgit_exception.
+
+    " Get repository URL
+    lv_repo_url = mi_repo_online->get_url( ).
+    
+    " Extract user/repo from URL (for GitHub: https://github.com/user/repo.git)
+    FIND REGEX 'github\.com[/:]([^/]+)/([^/]+)' IN lv_repo_url
+      SUBMATCHES lv_user lv_repo.
+    
+    IF sy-subrc <> 0.
+      " Not a GitHub repository, skip PR creation
+      MESSAGE 'Automatic PR creation is only supported for GitHub repositories' TYPE 'I'.
+      RETURN.
+    ENDIF.
+    
+    " Clean repository name (remove .git extension if present)
+    lv_repo = replace( val = lv_repo regex = '\.git$' with = '' ).
+    lv_user_and_repo = |{ lv_user }/{ lv_repo }|.
+    
+    " Get clean branch names for PR
+    lv_head_branch = zcl_abapgit_git_branch_utils=>get_display_name( iv_source_branch ).
+    
+    TRY.
+        " Create HTTP agent
+        li_http_agent = zcl_abapgit_http_agent=>create( ).
+        
+        " Create GitHub PR provider
+        CREATE OBJECT li_pr_provider TYPE zcl_abapgit_pr_enum_github
+          EXPORTING
+            iv_user_and_repo = lv_user_and_repo
+            ii_http_agent    = li_http_agent.
+        
+        " Create pull request as draft using form data
+        li_pr_provider->create_pull_request(
+          iv_title = iv_pr_title
+          iv_body  = iv_pr_body
+          iv_head  = lv_head_branch
+          iv_base  = zcl_abapgit_git_branch_utils=>get_display_name( iv_target_branch ) ).
+        
+        MESSAGE |Pull request created successfully for branch { lv_head_branch }| TYPE 'S'.
+        
+      CATCH zcx_abapgit_exception INTO lx_error.
+        MESSAGE |Error creating pull request: { lx_error->get_text( ) }| TYPE 'W'.
+    ENDTRY.
+    
   ENDMETHOD.
 
 
@@ -571,6 +636,14 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
                 lv_main_branch = find_main_branch( ).
                 IF lv_main_branch IS NOT INITIAL.
                   mi_repo_online->select_branch( lv_main_branch ).
+                  
+                  " Automatically create pull request
+                  create_pull_request_auto(
+                    iv_source_branch = lv_new_branch_name
+                    iv_target_branch = lv_main_branch
+                    iv_pr_title      = ms_commit-comment
+                    iv_pr_body       = ms_commit-body ).
+                  
                   lv_message = |Commit successful. Switched back to {
                     zcl_abapgit_git_branch_utils=>get_display_name( lv_main_branch ) }|.
                   MESSAGE lv_message TYPE 'S'.
