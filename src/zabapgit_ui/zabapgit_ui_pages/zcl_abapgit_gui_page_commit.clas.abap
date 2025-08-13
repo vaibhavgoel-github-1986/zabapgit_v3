@@ -527,6 +527,14 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       iv_key = c_id-comment
       iv_val = ms_commit-comment ).
 
+    " Auto-populate new branch name with main transport
+    DATA(lv_transport) = get_transport_from_stage( ).
+    IF lv_transport IS NOT INITIAL AND lv_transport <> 'DIRECT_COMMIT'.
+      mo_form_data->set(
+        iv_key = c_id-new_branch_name
+        iv_val = |feature/{ lv_transport }| ).
+    ENDIF.
+
   ENDMETHOD.
 
 
@@ -578,7 +586,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     ro_form->text(
       iv_name        = c_id-new_branch_name
       iv_label       = 'New Branch Name'
-      iv_placeholder = 'feature/main-transport-num'
+      iv_placeholder = 'feature/transport_number'
       iv_required    = abap_true
       iv_condense    = abap_true ).
 
@@ -757,9 +765,9 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
               write_application_log(
                 iv_log_type = 'E'
                 iv_message  = 'Invalid branch name pattern'
-                iv_detail   = |Branch: { lv_new_branch_name }, Expected pattern: feature/main-transport-num| ).
+                iv_detail   = |Branch: { lv_new_branch_name }, Expected pattern: feature/transport_number| ).
 
-              zcx_abapgit_exception=>raise( 'Branch name must follow pattern: feature/main-transport-num' ).
+              zcx_abapgit_exception=>raise( 'Branch name must follow pattern: feature/transport_number' ).
             ENDIF.
 
             " Store the original branch before creating new one
