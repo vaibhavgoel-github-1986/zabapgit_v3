@@ -582,9 +582,20 @@ CLASS ZCL_ABAPGIT_GUI_ROUTER IMPLEMENTATION.
     DATA lv_unreleased_tasks TYPE i.
 
     " Use simple transport input popup
-    CALL FUNCTION 'TR_PRESENT_REQUEST'
+    CALL FUNCTION 'TR_POPUP_INPUT_REQUEST'
+      EXPORTING
+        iv_title               = 'Parent Request'
+        iv_description         = 'Request'
+        iv_trfunctions         = 'KTR'
+        iv_trstatus            = 'D'
       IMPORTING
-        ev_selected_request = lv_trkorr.
+        ev_trkorr              = lv_trkorr                 " Request number
+      EXCEPTIONS
+        action_aborted_by_user = 1
+        OTHERS                 = 2.
+    IF sy-subrc <> 0.
+      zcx_abapgit_exception=>raise( 'Gegting Transport Request Failed' ).
+    ENDIF.
 
     IF lv_trkorr IS INITIAL.
       zcx_abapgit_exception=>raise( 'No transport was provided for staging' ).
