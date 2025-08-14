@@ -156,9 +156,16 @@ ENDCLASS.
 
 
 
-CLASS zcl_abapgit_gui_router IMPLEMENTATION.
+CLASS ZCL_ABAPGIT_GUI_ROUTER IMPLEMENTATION.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->ABAPGIT_SERVICES_ACTIONS
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [<-()] RS_HANDLED                     TYPE        ZIF_ABAPGIT_GUI_EVENT_HANDLER=>TY_HANDLING_RESULT
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD abapgit_services_actions.
 
     IF ii_event->mv_action = zif_abapgit_definitions=>c_action-abapgit_home.
@@ -169,6 +176,12 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
   ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->CALL_BROWSER
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_URL                         TYPE        CSEQUENCE
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD call_browser.
 
     zcl_abapgit_ui_factory=>get_frontend_services( )->execute( iv_document = |{ iv_url }| ).
@@ -176,6 +189,12 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
   ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->CALL_TRANSACTION
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_TCODE                       TYPE        CSEQUENCE
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD call_transaction.
 
     DATA lv_msg TYPE c LENGTH 200.
@@ -201,6 +220,13 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
   ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->DB_ACTIONS
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [<-()] RS_HANDLED                     TYPE        ZIF_ABAPGIT_GUI_EVENT_HANDLER=>TY_HANDLING_RESULT
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD db_actions.
 
     DATA ls_db_key TYPE zif_abapgit_persistence=>ty_content.
@@ -223,6 +249,13 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
   ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Static Private Method ZCL_ABAPGIT_GUI_ROUTER=>FILE_DOWNLOAD
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_PACKAGE                     TYPE        DEVCLASS
+* | [--->] IV_XSTR                        TYPE        XSTRING
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD file_download.
 
     DATA:
@@ -249,6 +282,13 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
   ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->GENERAL_PAGE_ROUTING
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [<-()] RS_HANDLED                     TYPE        ZIF_ABAPGIT_GUI_EVENT_HANDLER=>TY_HANDLING_RESULT
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD general_page_routing.
 
     DATA: lv_key           TYPE zif_abapgit_persistence=>ty_repo-key,
@@ -326,6 +366,13 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
   ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->GET_PAGE_DIFF
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [<-()] RI_PAGE                        TYPE REF TO ZIF_ABAPGIT_GUI_RENDERABLE
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD get_page_diff.
 
     DATA: ls_file   TYPE zif_abapgit_git_definitions=>ty_file,
@@ -346,6 +393,13 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
   ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->GET_PAGE_PATCH
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [<-()] RI_PAGE                        TYPE REF TO ZIF_ABAPGIT_GUI_RENDERABLE
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD get_page_patch.
 
     DATA: ls_file   TYPE zif_abapgit_git_definitions=>ty_file,
@@ -366,6 +420,14 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
   ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->GET_PAGE_STAGE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [--->] II_OBJ_FILTER                  TYPE REF TO ZIF_ABAPGIT_OBJECT_FILTER(optional)
+* | [<-()] RI_PAGE                        TYPE REF TO ZIF_ABAPGIT_GUI_RENDERABLE
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD get_page_stage.
 
     DATA: li_repo_online TYPE REF TO zif_abapgit_repo_online,
@@ -418,6 +480,12 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
   ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->GET_STATE_DIFF
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [<-()] RV_STATE                       TYPE        I
+* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD get_state_diff.
 
     " Bookmark current page before jumping to diff page
@@ -430,6 +498,12 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
   ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->GET_STATE_SETTINGS
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [<-()] RV_STATE                       TYPE        I
+* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD get_state_settings.
 
     " Bookmark current page before jumping to any settings page
@@ -442,6 +516,13 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
   ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->GIT_SERVICES
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [<-()] RS_HANDLED                     TYPE        ZIF_ABAPGIT_GUI_EVENT_HANDLER=>TY_HANDLING_RESULT
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD git_services.
 
     DATA lv_key TYPE zif_abapgit_persistence=>ty_repo-key.
@@ -484,6 +565,13 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
   ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->GO_STAGE_TRANSPORT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_KEY                         TYPE        ZIF_ABAPGIT_PERSISTENCE=>TY_REPO-KEY
+* | [<-()] RO_FILTER                      TYPE REF TO ZCL_ABAPGIT_OBJECT_FILTER_TRAN
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD go_stage_transport.
 
     DATA lt_r_trkorr TYPE zif_abapgit_definitions=>ty_trrngtrkor_tt.
@@ -510,7 +598,7 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
     IF sy-subrc <> 0.
       zcx_abapgit_exception=>raise( |Transport { lv_trkorr } not found in system| ).
     ENDIF.
-    
+
     IF lv_transport_type <> 'K' AND lv_transport_type <> 'Q'.
       zcx_abapgit_exception=>raise( |Transport { lv_trkorr } is not a main transport. | &
                                     |Please select a main transport (type K or Q), not a subtask| ).
@@ -523,23 +611,32 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
         AND trfunction = 'T'
         AND trstatus <> 'R'
       INTO @lv_unreleased_tasks.
-      
+
     IF lv_unreleased_tasks > 0.
       zcx_abapgit_exception=>raise( |Transport { lv_trkorr } has { lv_unreleased_tasks } | &
                                     |unreleased subtask(s). All subtasks must be released before staging| ).
+    ENDIF.
 
     " Convert single transport to range table format for filter
-      lt_r_trkorr = VALUE #( ( sign = 'I' option = 'EQ' low = lv_trkorr ) ).
+    lt_r_trkorr = VALUE #( ( sign = 'I' option = 'EQ' low = lv_trkorr ) ).
 
-      li_repo = zcl_abapgit_repo_srv=>get_instance( )->get( iv_key ).
+    li_repo = zcl_abapgit_repo_srv=>get_instance( )->get( iv_key ).
 
-      CREATE OBJECT ro_filter.
-      ro_filter->set_filter_values( iv_package  = li_repo->get_package( )
-                                  it_r_trkorr = lt_r_trkorr ).
+    CREATE OBJECT ro_filter.
+    ro_filter->set_filter_values( iv_package  = li_repo->get_package( )
+                                it_r_trkorr = lt_r_trkorr ).
 
-    ENDMETHOD.
+  ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Static Private Method ZCL_ABAPGIT_GUI_ROUTER=>JUMP_DISPLAY_TRANSPORT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_TRANSPORT                   TYPE        TRKORR
+* | [--->] IV_OBJ_TYPE                    TYPE        TADIR-OBJECT(optional)
+* | [--->] IV_OBJ_NAME                    TYPE        TADIR-OBJ_NAME(optional)
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
     METHOD jump_display_transport.
 
       DATA:
@@ -584,6 +681,12 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
     ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Static Private Method ZCL_ABAPGIT_GUI_ROUTER=>JUMP_DISPLAY_USER
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_USERNAME                    TYPE        SYUNAME
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
     METHOD jump_display_user.
 
     " todo, user display in ADT
@@ -595,6 +698,18 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
     ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Static Private Method ZCL_ABAPGIT_GUI_ROUTER=>JUMP_OBJECT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_OBJ_TYPE                    TYPE        STRING
+* | [--->] IV_OBJ_NAME                    TYPE        STRING
+* | [--->] IV_FILENAME                    TYPE        STRING
+* | [--->] IV_SUB_TYPE                    TYPE        STRING(optional)
+* | [--->] IV_SUB_NAME                    TYPE        STRING(optional)
+* | [--->] IV_LINE                        TYPE        STRING(optional)
+* | [--->] IV_NEW_WINDOW                  TYPE        STRING (default ='X')
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
     METHOD jump_object.
 
       DATA:
@@ -646,6 +761,12 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
     ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->MAIN_PAGE
+* +-------------------------------------------------------------------------------------------------+
+* | [<-()] RI_PAGE                        TYPE REF TO ZIF_ABAPGIT_GUI_RENDERABLE
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
     METHOD main_page.
 
       DATA lt_repo_all_list TYPE zif_abapgit_repo_srv=>ty_repo_list.
@@ -662,6 +783,13 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
     ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->OTHER_UTILITIES
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [<-()] RS_HANDLED                     TYPE        ZIF_ABAPGIT_GUI_EVENT_HANDLER=>TY_HANDLING_RESULT
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
     METHOD other_utilities.
       TYPES ty_char600 TYPE c LENGTH 600.
       DATA lv_clip_content TYPE string.
@@ -689,6 +817,13 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
     ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->REPOSITORY_SERVICES
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [<-()] RS_HANDLED                     TYPE        ZIF_ABAPGIT_GUI_EVENT_HANDLER=>TY_HANDLING_RESULT
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
     METHOD repository_services.
 
       DATA:
@@ -775,6 +910,13 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
     ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->SAP_GUI_ACTIONS
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [<-()] RS_HANDLED                     TYPE        ZIF_ABAPGIT_GUI_EVENT_HANDLER=>TY_HANDLING_RESULT
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
     METHOD sap_gui_actions.
 
       CASE ii_event->mv_action.
@@ -814,6 +956,13 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
     ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_ABAPGIT_GUI_ROUTER->ZIF_ABAPGIT_GUI_EVENT_HANDLER~ON_EVENT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [<-()] RS_HANDLED                     TYPE        TY_HANDLING_RESULT
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
     METHOD zif_abapgit_gui_event_handler~on_event.
 
       IF rs_handled-state IS INITIAL.
@@ -848,6 +997,12 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
     ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->ZIP_EXPORT_TRANSPORT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_KEY                         TYPE        ZIF_ABAPGIT_PERSISTENCE=>TY_REPO-KEY
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
     METHOD zip_export_transport.
 
       DATA lo_obj_filter_trans TYPE REF TO zcl_abapgit_object_filter_tran.
@@ -870,6 +1025,13 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
     ENDMETHOD.
 
 
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ABAPGIT_GUI_ROUTER->ZIP_SERVICES
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] II_EVENT                       TYPE REF TO ZIF_ABAPGIT_GUI_EVENT
+* | [<-()] RS_HANDLED                     TYPE        ZIF_ABAPGIT_GUI_EVENT_HANDLER=>TY_HANDLING_RESULT
+* | [!CX!] ZCX_ABAPGIT_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
     METHOD zip_services.
 
       DATA: lv_key            TYPE zif_abapgit_persistence=>ty_repo-key,
