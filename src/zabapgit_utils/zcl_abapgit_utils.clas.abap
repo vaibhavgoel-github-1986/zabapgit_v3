@@ -111,8 +111,6 @@ CLASS ZCL_ABAPGIT_UTILS IMPLEMENTATION.
 
 
   METHOD is_admin.
-    rv_admin = abap_true.
-    return.
 
     DATA lv_uname TYPE agr_users-uname.
     SELECT SINGLE uname INTO lv_uname FROM agr_users
