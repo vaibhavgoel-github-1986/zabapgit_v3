@@ -156,7 +156,7 @@ ENDCLASS.
 
 
 
-CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
+CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
 
 
   METHOD branch_name_to_internal.
@@ -615,7 +615,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       iv_name        = c_id-new_branch_name
       iv_label       = 'New Branch Name'
       iv_placeholder = 'feature/transport_number'
-      iv_required    = abap_true
+      iv_required    = abap_false
       iv_condense    = abap_true ).
 
     ro_form->command(
@@ -786,10 +786,12 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
             WITH cl_abap_char_utilities=>newline.
 
           lv_new_branch_name = mo_form_data->get( c_id-new_branch_name ).
+
           " create new branch and commit to it if branch name is not empty
           IF lv_new_branch_name IS NOT INITIAL.
             " Validate the branch name follows feature/* pattern
-            IF lv_new_branch_name NP 'feature/*'.
+            IF lv_new_branch_name NP |feature/{ to_lower( sy-sysid ) }*| OR
+               lv_new_branch_name NP |feature/{ to_upper( sy-sysid ) }*|.
               write_application_log(
                 iv_log_type = 'E'
                 iv_message  = 'Invalid branch name pattern'
@@ -808,6 +810,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
               iv_detail   = |Branch: { lv_new_branch_name }, From: { lv_original_branch }| ).
 
             lv_new_branch_name = branch_name_to_internal( lv_new_branch_name ).
+
             " creates a new branch and automatically switches to it
             mi_repo_online->create_branch( lv_new_branch_name ).
 
@@ -841,6 +844,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
                   iv_detail   = 'Looking for release/sha* pattern or main/master' ).
 
                 lv_main_branch = find_main_branch( ).
+
                 IF lv_main_branch IS NOT INITIAL.
                   write_application_log(
                     iv_log_type = 'S'
@@ -1147,5 +1151,4 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     rv_output = lv_temp.
 
   ENDMETHOD.
-
 ENDCLASS.
