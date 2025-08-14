@@ -175,7 +175,7 @@ ENDCLASS.
 
 
 
-CLASS zcl_abapgit_gui_page_repo_over IMPLEMENTATION.
+CLASS ZCL_ABAPGIT_GUI_PAGE_REPO_OVER IMPLEMENTATION.
 
 
   METHOD apply_filter.
@@ -841,7 +841,8 @@ CLASS zcl_abapgit_gui_page_repo_over IMPLEMENTATION.
       ii_html->td( ii_content = zcl_abapgit_gui_chunk_lib=>render_branch_name(
         iv_branch      = is_repo-branch
         iv_repo_key    = is_repo-key
-        iv_interactive = zcl_abapgit_utils=>is_admin( ) ) ).
+        iv_interactive = abap_true ) ).
+*        iv_interactive = zcl_abapgit_utils=>is_admin( ) ) ).
     ENDIF.
 
     " Details: deserialized by
