@@ -156,7 +156,7 @@ ENDCLASS.
 
 
 
-CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
+CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
 
 
   METHOD branch_name_to_internal.
@@ -547,12 +547,16 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
       iv_val = ms_commit-comment ).
 
     " Auto-populate new branch name and comment with main transport
+    " Only if current branch is a release/* branch
+    DATA(lv_current_branch) = mi_repo_online->get_selected_branch( ).
     DATA(lv_transport) = get_transport_from_stage( ).
-    IF lv_transport IS NOT INITIAL AND lv_transport <> 'DIRECT_COMMIT'.
-      " Auto-populate branch name
+    
+    IF lv_transport IS NOT INITIAL AND lv_transport <> 'DIRECT_COMMIT' AND
+       lv_current_branch CP 'release/*'.
+      " Auto-populate branch name only when staging from release branch
       mo_form_data->set(
         iv_key = c_id-new_branch_name
-        iv_val = |feature/{ lv_transport }| ).
+        iv_val = |feature/{ to_upper( lv_transport ) }| ).
 
       " Auto-populate comment with transport description if available
       DATA(lv_transport_desc) = get_transport_description( lv_transport ).
@@ -614,7 +618,7 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
     ro_form->text(
       iv_name        = c_id-new_branch_name
       iv_label       = 'New Branch Name'
-      iv_placeholder = 'feature/transport_number'
+      iv_placeholder = 'feature/TRANSPORT_NUMBER'
       iv_required    = abap_false
       iv_condense    = abap_true ).
 
@@ -730,6 +734,15 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
     ENDIF.
 
     lv_new_branch_name = io_form_data->get( c_id-new_branch_name ).
+    
+    " Check if we're on a release branch - if so, new branch is mandatory
+    DATA(lv_current_branch) = mi_repo_online->get_selected_branch( ).
+    IF lv_current_branch CP 'release/*' AND lv_new_branch_name IS INITIAL.
+      ro_validation_log->set(
+        iv_key = c_id-new_branch_name
+        iv_val = |You cannot commit to a release branch| ).
+    ENDIF.
+    
     IF lv_new_branch_name IS NOT INITIAL.
       " check if branch already exists
       lt_branches = zcl_abapgit_git_factory=>get_git_transport(
@@ -789,15 +802,14 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
 
           " create new branch and commit to it if branch name is not empty
           IF lv_new_branch_name IS NOT INITIAL.
-            " Validate the branch name follows feature/* pattern
-            IF lv_new_branch_name NP |feature/{ to_lower( sy-sysid ) }*| OR
-               lv_new_branch_name NP |feature/{ to_upper( sy-sysid ) }*|.
+            " Validate the branch name follows feature/* pattern with uppercase transport
+            IF lv_new_branch_name NP |feature/{ to_upper( sy-sysid ) }*|.
               write_application_log(
                 iv_log_type = 'E'
                 iv_message  = 'Invalid branch name pattern'
-                iv_detail   = |Branch: { lv_new_branch_name }, Expected pattern: feature/transport_number| ).
+                iv_detail   = |Branch: { lv_new_branch_name }, Expected pattern: feature/TRANSPORT_NUMBER| ).
 
-              zcx_abapgit_exception=>raise( 'Branch name must follow pattern: feature/transport_number' ).
+              zcx_abapgit_exception=>raise( 'Branch name must follow pattern: feature/TRANSPORT_NUMBER' ).
             ENDIF.
 
             " Store the original branch before creating new one
