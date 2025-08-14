@@ -156,7 +156,7 @@ ENDCLASS.
 
 
 
-CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
+CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
 
 
   METHOD branch_name_to_internal.
@@ -550,14 +550,16 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     " Only if current branch is a release/* branch
     DATA(lv_current_branch) = mi_repo_online->get_selected_branch( ).
     DATA(lv_transport) = get_transport_from_stage( ).
-    
+
     IF lv_transport IS NOT INITIAL AND lv_transport <> 'DIRECT_COMMIT' AND
-       lv_current_branch CP |release/{ to_upper( sy-sysid ) }*|.
+      lv_current_branch CP |*release/{ to_upper( sy-sysid ) }*|.
       " Auto-populate branch name only when staging from release branch
       mo_form_data->set(
         iv_key = c_id-new_branch_name
         iv_val = |feature/{ to_upper( lv_transport ) }| ).
+    ENDIF.
 
+    IF lv_transport IS NOT INITIAL.
       " Auto-populate comment with transport description if available
       DATA(lv_transport_desc) = get_transport_description( lv_transport ).
       IF lv_transport_desc IS NOT INITIAL.
@@ -734,7 +736,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     ENDIF.
 
     lv_new_branch_name = io_form_data->get( c_id-new_branch_name ).
-    
+
     " Check if we're on a release branch - if so, new branch is mandatory
     DATA(lv_current_branch) = mi_repo_online->get_selected_branch( ).
     IF lv_current_branch CP |release/{ to_upper( sy-sysid ) }*| AND lv_new_branch_name IS INITIAL.
@@ -742,7 +744,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         iv_key = c_id-new_branch_name
         iv_val = |You cannot commit to a release branch| ).
     ENDIF.
-    
+
     IF lv_new_branch_name IS NOT INITIAL.
       " check if branch already exists
       lt_branches = zcl_abapgit_git_factory=>get_git_transport(
@@ -765,8 +767,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     DATA lv_main_branch       TYPE string.
     DATA lx_error             TYPE REF TO zcx_abapgit_exception.
     DATA lv_message           TYPE string.
-    DATA lv_current_branch_before_commit TYPE string.
-    DATA lv_current_branch_after_commit TYPE string.
+    DATA lv_selected_branch   TYPE string.
 
     mo_form_data = mo_form_util->normalize( ii_event->form_data( ) ).
 
@@ -800,7 +801,9 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
             WITH cl_abap_char_utilities=>newline.
 
           " Store the current branch before any operations
-          lv_current_branch_before_commit = mi_repo_online->get_selected_branch( ).
+          lv_selected_branch = mi_repo_online->get_selected_branch( ).
+
+          "New Branch Name - in the Commit form
           lv_new_branch_name = mo_form_data->get( c_id-new_branch_name ).
 
           " create new branch and commit to it if branch name is not empty
@@ -819,7 +822,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
             write_application_log(
               iv_log_type = 'S'
               iv_message  = 'Creating new branch'
-              iv_detail   = |Branch: { lv_new_branch_name }, From: { lv_current_branch_before_commit }| ).
+              iv_detail   = |Branch: { lv_new_branch_name }, From: { lv_selected_branch }| ).
 
             lv_new_branch_name = branch_name_to_internal( lv_new_branch_name ).
 
@@ -855,6 +858,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
                   iv_message  = 'Finding main branch for PR target'
                   iv_detail   = |Looking for release/{ to_upper( sy-sysid ) }* pattern or main/master| ).
 
+                " Find the release branch
                 lv_main_branch = find_main_branch( ).
 
                 IF lv_main_branch IS NOT INITIAL.
@@ -863,6 +867,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
                     iv_message  = 'Switching back to main branch'
                     iv_detail   = |Target branch: { lv_main_branch }| ).
 
+                  " Switch back to main/release branch
                   mi_repo_online->select_branch( lv_main_branch ).
 
                   write_application_log(
@@ -895,30 +900,24 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
           ELSE.
             " No new branch was created - check if we need to switch back to release branch
             " This handles the case where user switched to feature branch for staging
-            IF lv_current_branch_before_commit CP |release/{ to_upper( sy-sysid ) }*|.
-              " We came from a release branch, but user might have switched to feature branch for commit
-              lv_current_branch_after_commit = mi_repo_online->get_selected_branch( ).
-              
-              " If current branch is different from original, switch back to release branch
-              IF lv_current_branch_after_commit <> lv_current_branch_before_commit.
-                TRY.
-                    write_application_log(
-                      iv_log_type = 'S'
-                      iv_message  = 'Switching back to original release branch'
-                      iv_detail   = |{ lv_current_branch_after_commit } -> { lv_current_branch_before_commit }| ).
+            IF lv_selected_branch CP |*feature/{ to_upper( sy-sysid ) }*|.
+              TRY.
+                lv_main_branch = find_main_branch( ).
 
-                    mi_repo_online->select_branch( lv_current_branch_before_commit ).
+                  write_application_log(
+                    iv_log_type = 'S'
+                    iv_message  = 'Switching back to release branch'
+                    iv_detail   = |{ lv_selected_branch } -> { lv_main_branch }| ).
 
-                    lv_message = |Commit successful. Switched back to {
-                      zcl_abapgit_git_branch_utils=>get_display_name( lv_current_branch_before_commit ) }|.
-                    MESSAGE lv_message TYPE 'S'.
-                  CATCH zcx_abapgit_exception INTO lx_error.
-                    lv_message = |Commit successful. Error switching back to release branch: { lx_error->get_text( ) }|.
-                    MESSAGE lv_message TYPE 'W'.
-                ENDTRY.
-              ELSE.
-                MESSAGE 'Commit was successful' TYPE 'S'.
-              ENDIF.
+                  mi_repo_online->select_branch( lv_main_branch ).
+
+                  lv_message = |Commit successful. Switched back to {
+                    zcl_abapgit_git_branch_utils=>get_display_name( lv_main_branch ) }|.
+                  MESSAGE lv_message TYPE 'S'.
+                CATCH zcx_abapgit_exception INTO lx_error.
+                  lv_message = |Commit successful. Error switching back to release branch: { lx_error->get_text( ) }|.
+                  MESSAGE lv_message TYPE 'W'.
+              ENDTRY.
             ELSE.
               MESSAGE 'Commit was successful' TYPE 'S'.
             ENDIF.
@@ -1131,7 +1130,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       SELECT SINGLE as4text
         FROM e07t
         WHERE trkorr = @iv_transport
-          AND langu = 'E'
+          AND langu = @sy-langu
         INTO @lv_as4text.
     ENDIF.
 
