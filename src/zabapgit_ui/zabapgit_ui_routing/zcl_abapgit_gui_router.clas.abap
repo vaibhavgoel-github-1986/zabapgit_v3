@@ -508,7 +508,7 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
     " Check if selected transport is a main transport (not a subtask)
     READ TABLE lt_r_trkorr INTO ls_r_trkorr INDEX 1.
     SELECT SINGLE trfunction
-      FROM e070
+      FROM e070  
       WHERE trkorr = @ls_r_trkorr-low
       INTO @lv_transport_type.
     IF sy-subrc <> 0.
