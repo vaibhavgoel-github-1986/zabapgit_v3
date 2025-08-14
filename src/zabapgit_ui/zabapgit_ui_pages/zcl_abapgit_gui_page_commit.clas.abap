@@ -250,6 +250,7 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
         APPEND to_lower( ls_user-low ) TO lt_reviewers.
       ENDLOOP.
       MESSAGE |Found { lines( lt_reviewers ) } reviewer(s) in configuration| TYPE 'S'.
+
       write_application_log(
         iv_log_type = 'I'
         iv_message  = 'Reviewers found in configuration'
@@ -286,6 +287,7 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
     TRY.
         " Create HTTP agent
         li_http_agent = zcl_abapgit_http_agent=>create( ).
+
         write_application_log(
           iv_log_type = 'I'
           iv_message  = 'HTTP agent created for GitHub API'
@@ -299,6 +301,7 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
 
         " Step 1: Create pull request as draft using form data
         MESSAGE |Creating pull request for branch { lv_head_branch }...| TYPE 'S'.
+
         write_application_log(
           iv_log_type = 'I'
           iv_message  = 'Starting pull request creation'
@@ -356,11 +359,21 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
           iv_detail   = |PR: { lv_pr_number }, Count: { lines( lt_reviewers ) }| ).
 
         " Final success message
-        MESSAGE |Automation complete: PR #{ lv_pr_number } ready for review| TYPE 'I' DISPLAY LIKE 'S'.
+        MESSAGE |PR #{ lv_pr_number } created and assigned for code review|
+         TYPE 'I' DISPLAY LIKE 'S'.
+
         write_application_log(
           iv_log_type = 'S'
-          iv_message  = 'PR automation workflow completed successfully'
-          iv_detail   = |PR: { lv_pr_number }, Process: commit -> branch -> PR -> reviewers| ).
+          iv_message  = 'PR created successfully'
+          iv_detail   = |PR #{ lv_pr_number } created successfully|  ).
+
+        " Setting PR 'Ready for Review'
+        li_pr_provider->ready_for_review( lv_pr_number ).
+
+        write_application_log(
+         iv_log_type = 'S'
+         iv_message  = |'PR was set 'Ready for Review'|
+         iv_detail   = |PR #{ lv_pr_number } marked ready for review|  ).
 
       CATCH zcx_abapgit_exception INTO lx_error.
         write_application_log(
