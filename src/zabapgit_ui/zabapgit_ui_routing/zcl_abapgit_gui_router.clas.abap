@@ -488,20 +488,39 @@ CLASS zcl_abapgit_gui_router IMPLEMENTATION.
 
     DATA lt_r_trkorr TYPE zif_abapgit_definitions=>ty_trrngtrkor_tt.
     DATA li_repo TYPE REF TO zif_abapgit_repo.
+    DATA lv_transport_type TYPE e070-trfunction.
+    DATA ls_r_trkorr TYPE LINE OF zif_abapgit_definitions=>ty_trrngtrkor_tt.
 
+    " Use transport selection popup
     lt_r_trkorr = zcl_abapgit_ui_factory=>get_popups( )->popup_select_wb_tc_tr_and_tsk( ).
 
-    " Validate that exactly one main transport is selected
     IF lines( lt_r_trkorr ) = 0.
-      MESSAGE 'No transport selected. Please select one main transport.' TYPE 'E'.
-      RETURN.
-    ELSEIF lines( lt_r_trkorr ) > 1.
-      MESSAGE 'Multiple transports selected. Please select only ONE main transport for one PR.' TYPE 'E'.
+      MESSAGE 'No transport was provided for staging.' TYPE 'E'.
       RETURN.
     ENDIF.
 
-    " Note: Popup now restricts to main transports only (K=Customizing, W=Workbench)
-    " so additional validation for sub-tasks is no longer needed
+    " Validate that exactly one transport is selected
+    IF lines( lt_r_trkorr ) > 1.
+      MESSAGE 'Please provide one transport at a time for staging.' TYPE 'E'.
+      RETURN.
+    ENDIF.
+
+    " Check if selected transport is a main transport (not a subtask)
+    READ TABLE lt_r_trkorr INTO ls_r_trkorr INDEX 1.
+    SELECT SINGLE trfunction
+      FROM e070
+      WHERE trkorr = @ls_r_trkorr-low
+      INTO @lv_transport_type.
+    IF sy-subrc <> 0.
+      MESSAGE |Transport { ls_r_trkorr-low } not found in system| TYPE 'E'.
+      RETURN.
+    ENDIF.
+    
+    IF lv_transport_type <> 'K' AND lv_transport_type <> 'Q'.
+      MESSAGE |Transport { ls_r_trkorr-low } is not a main transport. | &
+               |Please select a main transport (type K or Q), not a subtask.| TYPE 'E'.
+      RETURN.
+    ENDIF.
 
     li_repo = zcl_abapgit_repo_srv=>get_instance( )->get( iv_key ).
 
