@@ -11,7 +11,7 @@ PARAMETERS: p_treq   TYPE strkorr OBLIGATORY,
             p_action TYPE char10 DEFAULT 'DISPLAY'.
 
 SELECTION-SCREEN BEGIN OF BLOCK actions WITH FRAME TITLE TEXT-001.
-  PARAMETERS: r_disp  RADIOBUTTON GROUP act DEFAULT 'X',
+PARAMETERS: r_disp  RADIOBUTTON GROUP act DEFAULT 'X',
               r_creat RADIOBUTTON GROUP act,
               r_updat RADIOBUTTON GROUP act,
               r_sync  RADIOBUTTON GROUP act,
@@ -69,10 +69,18 @@ START-OF-SELECTION.
           IF p_url IS INITIAL.
             WRITE: / 'Repository URL is required for sync'.
           ELSE.
-            zcl_abapgit_pr_status_manager=>sync_with_github(
-              iv_parent_request = p_treq
-              iv_repo_url = p_url ).
-            WRITE: / 'Sync completed for TR:', p_treq.
+            " Check if GitHub credentials are configured
+            DATA(lv_auth) = zcl_abapgit_login_manager=>get( p_url ).
+            IF lv_auth IS INITIAL.
+              WRITE: / 'No GitHub authentication found.'.
+              WRITE: / 'Please configure GitHub credentials first using abapGit repository settings.'.
+              WRITE: / 'Go to: Repository -> Settings -> Authentication'.
+            ELSE.
+              zcl_abapgit_pr_status_manager=>sync_with_github(
+                iv_parent_request = p_treq
+                iv_repo_url = p_url ).
+              WRITE: / 'Sync completed for TR:', p_treq.
+            ENDIF.
           ENDIF.
 
         WHEN r_delet.

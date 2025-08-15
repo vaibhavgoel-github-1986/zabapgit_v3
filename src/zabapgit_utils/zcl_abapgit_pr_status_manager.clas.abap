@@ -5,7 +5,7 @@ CLASS zcl_abapgit_pr_status_manager DEFINITION
 
   PUBLIC SECTION.
 
-    TYPES: tt_pr_links TYPE TABLE OF zdt_pull_request with DEFAULT KEY.
+    TYPES: tt_pr_links TYPE TABLE OF zdt_pull_request WITH DEFAULT KEY.
 
     CONSTANTS:
       BEGIN OF c_pr_status,
@@ -68,7 +68,7 @@ ENDCLASS.
 
 
 
-CLASS ZCL_ABAPGIT_PR_STATUS_MANAGER IMPLEMENTATION.
+CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
 
 
   METHOD create_pr_link.
@@ -176,7 +176,9 @@ CLASS ZCL_ABAPGIT_PR_STATUS_MANAGER IMPLEMENTATION.
           li_http_agent   TYPE REF TO zif_abapgit_http_agent,
           lv_user         TYPE string,
           lv_repo         TYPE string,
-          lv_new_status   TYPE zde_pr_status.
+          lv_new_status   TYPE zde_pr_status,
+          lv_auth         TYPE string,
+          lx_error        TYPE REF TO zcx_abapgit_exception.
 
     FIELD-SYMBOLS: <ls_link> TYPE zdt_pull_request.
 
@@ -203,7 +205,19 @@ CLASS ZCL_ABAPGIT_PR_STATUS_MANAGER IMPLEMENTATION.
           regex = '\.git$'
           with  = '' ).
 
-        " Create GitHub PR provider
+        " Check if authentication is available for GitHub
+        lv_auth = zcl_abapgit_login_manager=>get( iv_repo_url ).
+        IF lv_auth IS INITIAL.
+          " Try with git URL format
+          lv_auth = zcl_abapgit_login_manager=>get( |https://github.com/{ lv_user }/{ lv_repo }.git| ).
+        ENDIF.
+        
+        IF lv_auth IS INITIAL.
+          MESSAGE 'No GitHub authentication found. Please configure GitHub credentials first.' TYPE 'W'.
+          RETURN.
+        ENDIF.
+
+        " Create GitHub PR provider with authentication
         li_http_agent = zcl_abapgit_http_agent=>create( ).
         li_github_pr = NEW #(
           iv_user_and_repo = |{ lv_user }/{ lv_repo }|
@@ -223,8 +237,8 @@ CLASS ZCL_ABAPGIT_PR_STATUS_MANAGER IMPLEMENTATION.
           ENDIF.
         ENDLOOP.
 
-      CATCH zcx_abapgit_exception.
-        MESSAGE 'Failed to sync PR status with GitHub' TYPE 'W'.
+      CATCH zcx_abapgit_exception INTO lx_error.
+        MESSAGE |Failed to sync PR status with GitHub: { lx_error->get_text( ) }| TYPE 'W'.
     ENDTRY.
 
   ENDMETHOD.
