@@ -15,13 +15,73 @@
     <item>
      <ID>I</ID>
      <KEY>001</KEY>
+     <ENTRY>Request Details</ENTRY>
+     <LENGTH>50</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>002</KEY>
      <ENTRY>Actions</ENTRY>
-     <LENGTH>7</LENGTH>
+     <LENGTH>17</LENGTH>
     </item>
     <item>
      <ID>R</ID>
      <ENTRY>Pull Request Status Sync</ENTRY>
-     <LENGTH>49</LENGTH>
+     <LENGTH>24</LENGTH>
+    </item>
+    <item>
+     <ID>S</ID>
+     <KEY>P_PRID</KEY>
+     <ENTRY>Pull Request ID</ENTRY>
+     <LENGTH>23</LENGTH>
+    </item>
+    <item>
+     <ID>S</ID>
+     <KEY>P_TREQ</KEY>
+     <ENTRY>Parent Request</ENTRY>
+     <LENGTH>22</LENGTH>
+    </item>
+    <item>
+     <ID>S</ID>
+     <KEY>P_URL</KEY>
+     <ENTRY>Github Repo URL</ENTRY>
+     <LENGTH>23</LENGTH>
+    </item>
+    <item>
+     <ID>S</ID>
+     <KEY>R_CREAT</KEY>
+     <ENTRY>Create Linkage</ENTRY>
+     <LENGTH>22</LENGTH>
+    </item>
+    <item>
+     <ID>S</ID>
+     <KEY>R_DELET</KEY>
+     <ENTRY>Delete Linkage</ENTRY>
+     <LENGTH>22</LENGTH>
+    </item>
+    <item>
+     <ID>S</ID>
+     <KEY>R_DISP</KEY>
+     <ENTRY>Display</ENTRY>
+     <LENGTH>15</LENGTH>
+    </item>
+    <item>
+     <ID>S</ID>
+     <KEY>R_SYNC</KEY>
+     <ENTRY>Pull PR Status and Sync</ENTRY>
+     <LENGTH>31</LENGTH>
+    </item>
+    <item>
+     <ID>S</ID>
+     <KEY>R_TEST</KEY>
+     <ENTRY>Test Mode</ENTRY>
+     <LENGTH>17</LENGTH>
+    </item>
+    <item>
+     <ID>S</ID>
+     <KEY>R_UPDAT</KEY>
+     <ENTRY>Update to Approved</ENTRY>
+     <LENGTH>26</LENGTH>
     </item>
    </TPOOL>
   </asx:values>

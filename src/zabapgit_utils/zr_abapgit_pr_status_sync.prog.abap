@@ -3,18 +3,19 @@
 *&---------------------------------------------------------------------*
 REPORT zr_abapgit_pr_status_sync.
 
-PARAMETERS: p_treq   TYPE strkorr OBLIGATORY,
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
+PARAMETERS: p_treq   TYPE e070-strkorr OBLIGATORY,
             p_prid   TYPE int8,
-            p_url    TYPE string LOWER CASE,
-            p_action TYPE char10 DEFAULT 'DISPLAY'.
+            p_url    TYPE string LOWER CASE DEFAULT 'https://github.com/cisco-it-finance/sap-brim-github-repo.git'.
+SELECTION-SCREEN END OF BLOCK b1.
 
-SELECTION-SCREEN BEGIN OF BLOCK actions WITH FRAME TITLE TEXT-001.
+SELECTION-SCREEN BEGIN OF BLOCK actions WITH FRAME TITLE TEXT-002.
 PARAMETERS: r_disp  RADIOBUTTON GROUP act DEFAULT 'X',
               r_creat RADIOBUTTON GROUP act,
               r_updat RADIOBUTTON GROUP act,
               r_sync  RADIOBUTTON GROUP act,
-              r_test  RADIOBUTTON GROUP act,
-              r_delet RADIOBUTTON GROUP act.
+              r_delet RADIOBUTTON GROUP act,
+              r_test  RADIOBUTTON GROUP act.
 SELECTION-SCREEN END OF BLOCK actions.
 
 START-OF-SELECTION.
