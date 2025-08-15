@@ -104,7 +104,7 @@ START-OF-SELECTION.
           ENDIF.
 
         WHEN r_delet.
-          " Delete PR link
+          " Delete PR linkage
           IF p_prid IS INITIAL.
             WRITE: / 'PR ID is required for deletion'.
           ELSE.
