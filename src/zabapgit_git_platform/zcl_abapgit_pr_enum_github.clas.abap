@@ -43,6 +43,13 @@ CLASS zcl_abapgit_pr_enum_github DEFINITION
         it_reviewers   TYPE string_table
       RAISING
         zcx_abapgit_exception.
+    METHODS get_pr_detailed_status
+      IMPORTING
+        iv_pull_number     TYPE i
+      RETURNING
+        VALUE(rv_status)   TYPE string
+      RAISING
+        zcx_abapgit_exception.
   PROTECTED SECTION.
   PRIVATE SECTION.
 
@@ -341,4 +348,51 @@ CLASS zcl_abapgit_pr_enum_github IMPLEMENTATION.
       regex = '\{.*\}$'
       with = '' ).
   ENDMETHOD.
+
+  METHOD get_pr_detailed_status.
+* https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#get-a-pull-request
+
+    DATA lv_url      TYPE string.
+    DATA li_response TYPE REF TO zif_abapgit_http_response.
+    DATA lr_json     TYPE REF TO zif_abapgit_ajson.
+    DATA lx_ajson    TYPE REF TO zcx_abapgit_ajson_error.
+    DATA lv_state    TYPE string.
+    DATA lv_merged   TYPE abap_bool.
+    DATA lv_draft    TYPE abap_bool.
+
+    lv_url = mv_repo_url && '/pulls/' && iv_pull_number.
+
+    li_response = mi_http_agent->request(
+      iv_url    = lv_url
+      iv_method = zif_abapgit_http_agent=>c_methods-get ).
+
+    IF li_response->is_ok( ) = abap_false.
+      zcx_abapgit_exception=>raise( |Error getting pull request status: { li_response->error( ) }| ).
+    ENDIF.
+
+    TRY.
+        lr_json = li_response->json( ).
+        lv_state = lr_json->get( '/state' ).
+        lv_merged = lr_json->get_boolean( '/merged' ).
+        lv_draft = lr_json->get_boolean( '/draft' ).
+
+        " Determine detailed status
+        IF lv_merged = abap_true.
+          rv_status = 'MERGED'.
+        ELSEIF lv_state = 'closed'.
+          rv_status = 'CLOSED'.
+        ELSEIF lv_draft = abap_true.
+          rv_status = 'DRAFT'.
+        ELSE.
+          " For open PRs, we could check review status here
+          " For now, just return 'OPEN'
+          rv_status = 'OPEN'.
+        ENDIF.
+
+      CATCH zcx_abapgit_ajson_error INTO lx_ajson.
+        zcx_abapgit_exception=>raise_with_text( lx_ajson ).
+    ENDTRY.
+
+  ENDMETHOD.
+
 ENDCLASS.
