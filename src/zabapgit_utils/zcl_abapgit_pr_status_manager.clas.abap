@@ -80,13 +80,11 @@ CLASS ZCL_ABAPGIT_PR_STATUS_MANAGER IMPLEMENTATION.
       INTO @DATA(lv_existing)
       WHERE parent_request = @iv_parent_request
         AND pr_id = @iv_pr_id.
-
     IF sy-subrc = 0.
       zcx_abapgit_exception=>raise( |PR link already exists for request { iv_parent_request } and PR { iv_pr_id }| ).
     ENDIF.
 
     " Create new PR link
-    ls_pr_link-mandt = sy-mandt.
     ls_pr_link-parent_request = iv_parent_request.
     ls_pr_link-pr_id = iv_pr_id.
     ls_pr_link-request_status = get_transport_status( iv_parent_request ).
@@ -100,7 +98,7 @@ CLASS ZCL_ABAPGIT_PR_STATUS_MANAGER IMPLEMENTATION.
 
     INSERT zdt_pull_request FROM ls_pr_link.
     IF sy-subrc <> 0.
-      zcx_abapgit_exception=>raise( |Failed to create PR link: { sy-subrc }| ).
+      zcx_abapgit_exception=>raise( |Failed to insert entry in DB| ).
     ENDIF.
 
     COMMIT WORK.
@@ -141,11 +139,16 @@ CLASS ZCL_ABAPGIT_PR_STATUS_MANAGER IMPLEMENTATION.
 
   METHOD get_pr_status.
 
+    DATA: lr_pr_id TYPE RANGE OF int8.
+
+    IF NOT iv_pr_id IS INITIAL.
+      lr_pr_id = VALUE #( ( sign = 'I' option = 'EQ' low = iv_pr_id ) ).
+    ENDIF.
+
     SELECT *
       FROM zdt_pull_request
       WHERE parent_request = @iv_parent_request
-        AND ( pr_id IS INITIAL
-           OR pr_id = @iv_pr_id )
+        AND pr_id IN @lr_pr_id
           INTO TABLE @rt_links.
 
   ENDMETHOD.

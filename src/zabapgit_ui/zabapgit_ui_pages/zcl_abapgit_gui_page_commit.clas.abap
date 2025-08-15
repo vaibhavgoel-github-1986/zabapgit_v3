@@ -156,7 +156,7 @@ ENDCLASS.
 
 
 
-CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
+CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
 
 
   METHOD branch_name_to_internal.
@@ -338,8 +338,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
               zcl_abapgit_pr_status_manager=>create_pr_link(
                 iv_parent_request = CONV strkorr( lv_transport )
                 iv_pr_id          = CONV int8( lv_pr_number )
-                iv_pr_status      = zcl_abapgit_pr_status_manager=>c_pr_status-draft ).
-              
+                iv_pr_status      = zcl_abapgit_pr_status_manager=>c_pr_status-open ).
+
               write_application_log(
                 iv_log_type = 'I'
                 iv_message  = 'PR linked to transport request'

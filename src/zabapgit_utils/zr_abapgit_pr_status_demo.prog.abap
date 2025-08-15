@@ -5,22 +5,22 @@
 *&---------------------------------------------------------------------*
 REPORT zr_abapgit_pr_status_demo.
 
-PARAMETERS: p_treq  TYPE strkorr OBLIGATORY,
-            p_prid  TYPE int8,
-            p_url   TYPE string LOWER CASE,
+PARAMETERS: p_treq   TYPE strkorr OBLIGATORY,
+            p_prid   TYPE int8,
+            p_url    TYPE string LOWER CASE,
             p_action TYPE char10 DEFAULT 'DISPLAY'.
 
 SELECTION-SCREEN BEGIN OF BLOCK actions WITH FRAME TITLE TEXT-001.
-PARAMETERS: r_disp  RADIOBUTTON GROUP act DEFAULT 'X',
-            r_creat RADIOBUTTON GROUP act,
-            r_updat RADIOBUTTON GROUP act,
-            r_sync  RADIOBUTTON GROUP act,
-            r_delet RADIOBUTTON GROUP act.
+  PARAMETERS: r_disp  RADIOBUTTON GROUP act DEFAULT 'X',
+              r_creat RADIOBUTTON GROUP act,
+              r_updat RADIOBUTTON GROUP act,
+              r_sync  RADIOBUTTON GROUP act,
+              r_delet RADIOBUTTON GROUP act.
 SELECTION-SCREEN END OF BLOCK actions.
 
 START-OF-SELECTION.
 
-  DATA: lt_links TYPE zcl_abapgit_pr_status_manager=>ty_pr_links,
+  DATA: lt_links TYPE zcl_abapgit_pr_status_manager=>tt_pr_links,
         lx_error TYPE REF TO zcx_abapgit_exception.
 
   TRY.
@@ -32,14 +32,12 @@ START-OF-SELECTION.
             WRITE: / 'No PR links found for transport request', p_treq.
           ELSE.
             WRITE: / 'PR Status for Transport Request:', p_treq.
-            WRITE: / '=' CO 60.
             LOOP AT lt_links INTO DATA(ls_link).
               WRITE: / 'PR ID:', ls_link-pr_id,
                      / 'PR Status:', ls_link-pr_status,
                      / 'Transport Status:', ls_link-request_status,
                      / 'Created By:', ls_link-created_by, 'on', ls_link-created_on,
-                     / 'Changed By:', ls_link-changed_by, 'on', ls_link-changed_on,
-                     / '-' CO 40.
+                     / 'Changed By:', ls_link-changed_by, 'on', ls_link-changed_on.
             ENDLOOP.
           ENDIF.
 
