@@ -1,27 +1,4 @@
 *&---------------------------------------------------------------------*
-*& Report ZR            ENDIF.
-          ENDIF.
-
-        WHEN r_test.
-          " Test individual PR status fetch
-IF p_prid IS INITIAL OR p_url IS INITIAL.
-WRITE: / 'Both PR ID and Repository URL are required for testing'.
-ELSE.
-TRY.
-DATA(lv_pr_status) = zcl_abapgit_pr_status_manager=>get_github_pr_status(
-                  iv_repo_url = p_url
-                  iv_pr_id    = p_prid ).
-WRITE: / 'PR Status Test Results:'.
-WRITE: / 'Repository URL:', p_url.
-WRITE: / 'PR ID:', p_prid.
-WRITE: / 'Current Status:', lv_pr_status.
-CATCH zcx_abapgit_exception INTO DATA(lx_test_error).
-WRITE: / 'Test failed:', lx_test_error->get_text( ).
-ENDTRY.
-ENDIF.
-
-WHEN r_delet.PGIT_PR_STATUS_SYNC
-*&---------------------------------------------------------------------*
 *& Sync program for Pull Request Status Management
 *&---------------------------------------------------------------------*
 REPORT zr_abapgit_pr_status_sync.
