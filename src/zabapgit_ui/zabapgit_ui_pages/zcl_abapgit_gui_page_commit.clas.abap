@@ -156,7 +156,7 @@ ENDCLASS.
 
 
 
-CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
+CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
 
 
   METHOD branch_name_to_internal.
@@ -330,6 +330,32 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
           iv_log_type = 'S'
           iv_message  = 'Pull request created successfully'
           iv_detail   = |PR Number: { lv_pr_number }, Title: { iv_pr_title }| ).
+
+        " Step 1.5: Automatically link PR to transport request in database
+        TRY.
+            DATA(lv_transport) = get_transport_from_stage( ).
+            IF lv_transport IS NOT INITIAL.
+              zcl_abapgit_pr_status_manager=>create_pr_link(
+                iv_parent_request = CONV strkorr( lv_transport )
+                iv_pr_id          = CONV int8( lv_pr_number )
+                iv_pr_status      = zcl_abapgit_pr_status_manager=>c_pr_status-draft ).
+              
+              write_application_log(
+                iv_log_type = 'I'
+                iv_message  = 'PR linked to transport request'
+                iv_detail   = |Transport: { lv_transport }, PR: { lv_pr_number }| ).
+            ELSE.
+              write_application_log(
+                iv_log_type = 'W'
+                iv_message  = 'No transport request found for PR linking'
+                iv_detail   = |PR: { lv_pr_number } created but not linked to transport| ).
+            ENDIF.
+          CATCH zcx_abapgit_exception INTO DATA(lx_link_error).
+            write_application_log(
+              iv_log_type = 'W'
+              iv_message  = 'Failed to link PR to transport request'
+              iv_detail   = |Error: { lx_link_error->get_text( ) }| ).
+        ENDTRY.
 
         " Step 2: Assign reviewers (we always have reviewers due to default logic above)
         DATA: lv_reviewers_display TYPE string.
@@ -915,7 +941,7 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
             " This handles the case where user switched to feature branch for staging
             IF lv_selected_branch CP |*feature/{ to_upper( sy-sysid ) }*|.
               TRY.
-                lv_main_branch = find_main_branch( ).
+                  lv_main_branch = find_main_branch( ).
 
                   write_application_log(
                     iv_log_type = 'S'
