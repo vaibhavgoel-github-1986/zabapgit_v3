@@ -5,7 +5,7 @@
    <VSEOCLASS>
     <CLSNAME>ZCL_IM_GIT_PR_CHECK</CLSNAME>
     <LANGU>E</LANGU>
-    <DESCRIPT>Imp. class for BAdI imp. ZGIT_PR_CHECK</DESCRIPT>
+    <DESCRIPT>BAdI Implementation for Git PR Checks Before Release</DESCRIPT>
     <STATE>1</STATE>
     <CLSCCINCL>X</CLSCCINCL>
     <FIXPT>X</FIXPT>
