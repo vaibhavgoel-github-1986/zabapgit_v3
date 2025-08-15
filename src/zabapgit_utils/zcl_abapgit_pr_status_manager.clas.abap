@@ -182,7 +182,9 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
 
     DATA: lt_links        TYPE tt_pr_links,
           lv_new_status   TYPE zde_pr_status,
-          lv_updated_count TYPE i.
+          lv_updated_count TYPE i,
+          lv_current_tr_status TYPE trstatus,
+          lv_status_updated TYPE abap_bool.
 
     FIELD-SYMBOLS: <ls_link> TYPE zdt_pull_request.
 
@@ -194,21 +196,44 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    " Get current transport status from SAP system
+    lv_current_tr_status = get_transport_status( iv_parent_request ).
+
     " Update status for each linked PR
     LOOP AT lt_links ASSIGNING <ls_link>.
       TRY.
+          " Check if transport status has changed and update if needed
+          IF <ls_link>-request_status <> lv_current_tr_status.
+            <ls_link>-request_status = lv_current_tr_status.
+            <ls_link>-changed_by = sy-uname.
+            <ls_link>-changed_on = sy-datum.
+            <ls_link>-changed_at = sy-uzeit.
+            lv_status_updated = abap_true.
+          ENDIF.
+
           " Get detailed PR status from GitHub API using our new method
           lv_new_status = get_github_pr_status(
             iv_repo_url = iv_repo_url
             iv_pr_id    = <ls_link>-pr_id ).
 
-          " Update if status changed
+          " Update if PR status changed
           IF <ls_link>-pr_status <> lv_new_status.
-            update_pr_status(
-              iv_parent_request = <ls_link>-parent_request
-              iv_pr_id          = <ls_link>-pr_id
-              iv_pr_status      = lv_new_status ).
-            lv_updated_count = lv_updated_count + 1.
+            <ls_link>-pr_status = lv_new_status.
+            <ls_link>-changed_by = sy-uname.
+            <ls_link>-changed_on = sy-datum.
+            <ls_link>-changed_at = sy-uzeit.
+            lv_status_updated = abap_true.
+          ENDIF.
+
+          " Update database record if any status changed
+          IF lv_status_updated = abap_true.
+            UPDATE zdt_pull_request FROM <ls_link>.
+            IF sy-subrc = 0.
+              lv_updated_count = lv_updated_count + 1.
+            ELSE.
+              MESSAGE |Failed to update PR { <ls_link>-pr_id } in database| TYPE 'W'.
+            ENDIF.
+            CLEAR lv_status_updated.
           ENDIF.
 
         CATCH zcx_abapgit_exception INTO DATA(lx_error).
@@ -216,7 +241,12 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
       ENDTRY.
     ENDLOOP.
 
-    MESSAGE |Sync completed. { lv_updated_count } PR(s) updated out of { lines( lt_links ) }| TYPE 'S'.
+    " Commit all changes
+    IF lv_updated_count > 0.
+      COMMIT WORK.
+    ENDIF.
+
+    MESSAGE |Sync completed. { lv_updated_count } PR(s) updated out of { lines( lt_links ) }. Transport status: { lv_current_tr_status }| TYPE 'S'.
 
   ENDMETHOD.
   METHOD get_github_pr_status.
