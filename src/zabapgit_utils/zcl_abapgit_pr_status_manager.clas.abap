@@ -77,7 +77,7 @@ ENDCLASS.
 
 
 
-CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
+CLASS ZCL_ABAPGIT_PR_STATUS_MANAGER IMPLEMENTATION.
 
 
   METHOD create_pr_link.
@@ -190,9 +190,9 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
 
     " Get all PR links for this transport request
     lt_links = get_pr_tr_linkage( iv_parent_request ).
-
     IF lines( lt_links ) = 0.
-      MESSAGE |No PR links found for transport request { iv_parent_request }| TYPE 'I'.
+      MESSAGE |No Pull Request was found for the Request.|
+       TYPE 'E'.
       RETURN.
     ENDIF.
 
@@ -249,6 +249,8 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
     MESSAGE |Sync completed. { lv_updated_count } PR(s) updated out of { lines( lt_links ) }. Transport status: { lv_current_tr_status }| TYPE 'S'.
 
   ENDMETHOD.
+
+
   METHOD get_github_pr_status.
 
     DATA: lv_user         TYPE string,
