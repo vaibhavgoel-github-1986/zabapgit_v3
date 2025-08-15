@@ -156,7 +156,7 @@ ENDCLASS.
 
 
 
-CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
+CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
 
 
   METHOD branch_name_to_internal.
@@ -239,12 +239,12 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_COMMIT IMPLEMENTATION.
     write_application_log(
       iv_log_type = 'I'
       iv_message  = 'Fetching reviewers from TVARVC table'
-      iv_detail   = 'Table: TVARVC, Name: Z_CODE_REVIEWERS' ).
+      iv_detail   = 'Table: TVARVC, Name: ZGIT_REVIEWER' ).
 
     SELECT *
       FROM tvarvc
       INTO TABLE @lt_users
-     WHERE name = 'Z_CODE_REVIEWERS'.
+     WHERE name = 'ZGIT_REVIEWER'.
     IF sy-subrc IS INITIAL.
       LOOP AT lt_users INTO ls_user.
         APPEND to_lower( ls_user-low ) TO lt_reviewers.

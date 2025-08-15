@@ -1,9 +1,30 @@
 *&---------------------------------------------------------------------*
-*& Report ZR_ABAPGIT_PR_STATUS_DEMO
+*& Report ZR            ENDIF.
+          ENDIF.
+
+        WHEN r_test.
+          " Test individual PR status fetch
+IF p_prid IS INITIAL OR p_url IS INITIAL.
+WRITE: / 'Both PR ID and Repository URL are required for testing'.
+ELSE.
+TRY.
+DATA(lv_pr_status) = zcl_abapgit_pr_status_manager=>get_github_pr_status(
+                  iv_repo_url = p_url
+                  iv_pr_id    = p_prid ).
+WRITE: / 'PR Status Test Results:'.
+WRITE: / 'Repository URL:', p_url.
+WRITE: / 'PR ID:', p_prid.
+WRITE: / 'Current Status:', lv_pr_status.
+CATCH zcx_abapgit_exception INTO DATA(lx_test_error).
+WRITE: / 'Test failed:', lx_test_error->get_text( ).
+ENDTRY.
+ENDIF.
+
+WHEN r_delet.PGIT_PR_STATUS_SYNC
 *&---------------------------------------------------------------------*
-*& Demo program for Pull Request Status Management
+*& Sync program for Pull Request Status Management
 *&---------------------------------------------------------------------*
-REPORT zr_abapgit_pr_status_demo.
+REPORT zr_abapgit_pr_status_sync.
 
 PARAMETERS: p_treq   TYPE strkorr OBLIGATORY,
             p_prid   TYPE int8,
@@ -11,10 +32,11 @@ PARAMETERS: p_treq   TYPE strkorr OBLIGATORY,
             p_action TYPE char10 DEFAULT 'DISPLAY'.
 
 SELECTION-SCREEN BEGIN OF BLOCK actions WITH FRAME TITLE TEXT-001.
-  PARAMETERS: r_disp  RADIOBUTTON GROUP act DEFAULT 'X',
+PARAMETERS: r_disp  RADIOBUTTON GROUP act DEFAULT 'X',
               r_creat RADIOBUTTON GROUP act,
               r_updat RADIOBUTTON GROUP act,
               r_sync  RADIOBUTTON GROUP act,
+              r_test  RADIOBUTTON GROUP act,
               r_delet RADIOBUTTON GROUP act.
 SELECTION-SCREEN END OF BLOCK actions.
 
@@ -27,7 +49,7 @@ START-OF-SELECTION.
       CASE abap_true.
         WHEN r_disp.
           " Display PR status
-          lt_links = zcl_abapgit_pr_status_manager=>get_pr_status( p_treq ).
+          lt_links = zcl_abapgit_pr_status_manager=>get_pr_tr_linkage( p_treq ).
           IF lines( lt_links ) = 0.
             WRITE: / 'No PR links found for transport request', p_treq.
           ELSE.
@@ -69,25 +91,38 @@ START-OF-SELECTION.
           IF p_url IS INITIAL.
             WRITE: / 'Repository URL is required for sync'.
           ELSE.
-            " Check if GitHub credentials are configured
-            zcl_abapgit_login_manager=>set(
-              EXPORTING
-                iv_uri      = ''
-                iv_username = 'vaibhav_cisco'
-                iv_password = ''
-              RECEIVING
-                rv_auth     = DATA(lv_auth)
-            ).
-            IF lv_auth IS INITIAL.
-              WRITE: / 'No GitHub authentication found.'.
-              WRITE: / 'Please configure GitHub credentials first using abapGit repository settings.'.
-              WRITE: / 'Go to: Repository -> Settings -> Authentication'.
-            ELSE.
-              zcl_abapgit_pr_status_manager=>sync_with_github(
-                iv_parent_request = p_treq
-                iv_repo_url = p_url ).
-              WRITE: / 'Sync completed for TR:', p_treq.
-            ENDIF.
+            " Call the improved sync method with built-in error handling
+            TRY.
+                zcl_abapgit_pr_status_manager=>sync_with_github(
+                  iv_parent_request = p_treq
+                  iv_repo_url       = p_url ).
+                WRITE: / 'Sync operation completed successfully.'.
+                WRITE: / 'Check messages above for detailed results.'.
+              CATCH zcx_abapgit_exception INTO DATA(lx_sync_error).
+                WRITE: / 'Sync failed:', lx_sync_error->get_text( ).
+                WRITE: / 'Please check:'.
+                WRITE: / '- ZGIT_API_KEY is maintained in TVARVC (SM30)'.
+                WRITE: / '- Repository URL is correct'.
+                WRITE: / '- Network connectivity to GitHub'.
+            ENDTRY.
+          ENDIF.
+
+        WHEN r_test.
+          " Test individual PR status fetch
+          IF p_prid IS INITIAL OR p_url IS INITIAL.
+            WRITE: / 'Both PR ID and Repository URL are required for testing'.
+          ELSE.
+            TRY.
+                DATA(lv_pr_status) = zcl_abapgit_pr_status_manager=>get_github_pr_status(
+                  iv_repo_url = p_url
+                  iv_pr_id    = p_prid ).
+                WRITE: / 'PR Status Test Results:'.
+                WRITE: / 'Repository URL:', p_url.
+                WRITE: / 'PR ID:', p_prid.
+                WRITE: / 'Current Status:', lv_pr_status.
+              CATCH zcx_abapgit_exception INTO DATA(lx_test_error).
+                WRITE: / 'Test failed:', lx_test_error->get_text( ).
+            ENDTRY.
           ENDIF.
 
         WHEN r_delet.

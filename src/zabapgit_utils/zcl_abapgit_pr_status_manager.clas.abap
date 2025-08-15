@@ -33,7 +33,7 @@ CLASS zcl_abapgit_pr_status_manager DEFINITION
       RAISING
         zcx_abapgit_exception.
 
-    CLASS-METHODS get_pr_status
+    CLASS-METHODS get_pr_tr_linkage
       IMPORTING
         iv_parent_request TYPE strkorr
         iv_pr_id          TYPE int8 OPTIONAL
@@ -53,6 +53,15 @@ CLASS zcl_abapgit_pr_status_manager DEFINITION
       IMPORTING
         iv_parent_request TYPE strkorr
         iv_repo_url       TYPE string
+      RAISING
+        zcx_abapgit_exception.
+
+    CLASS-METHODS get_github_pr_status
+      IMPORTING
+        iv_repo_url     TYPE string
+        iv_pr_id        TYPE int8
+      RETURNING
+        VALUE(rv_status) TYPE zde_pr_status
       RAISING
         zcx_abapgit_exception.
   PROTECTED SECTION.
@@ -137,7 +146,7 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD get_pr_status.
+  METHOD get_pr_tr_linkage.
 
     DATA: lr_pr_id TYPE RANGE OF int8.
 
@@ -172,22 +181,55 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
   METHOD sync_with_github.
 
     DATA: lt_links        TYPE tt_pr_links,
-          li_github_pr    TYPE REF TO zcl_abapgit_pr_enum_github,
-          li_http_agent   TYPE REF TO zif_abapgit_http_agent,
-          lv_user         TYPE string,
-          lv_repo         TYPE string,
           lv_new_status   TYPE zde_pr_status,
-          lv_auth         TYPE string,
-          lx_error        TYPE REF TO zcx_abapgit_exception.
+          lv_updated_count TYPE i.
 
     FIELD-SYMBOLS: <ls_link> TYPE zdt_pull_request.
 
     " Get all PR links for this transport request
-    lt_links = get_pr_status( iv_parent_request ).
+    lt_links = get_pr_tr_linkage( iv_parent_request ).
 
     IF lines( lt_links ) = 0.
+      MESSAGE |No PR links found for transport request { iv_parent_request }| TYPE 'I'.
       RETURN.
     ENDIF.
+
+    " Update status for each linked PR
+    LOOP AT lt_links ASSIGNING <ls_link>.
+      TRY.
+          " Get detailed PR status from GitHub API using our new method
+          lv_new_status = get_github_pr_status(
+            iv_repo_url = iv_repo_url
+            iv_pr_id    = <ls_link>-pr_id ).
+
+          " Update if status changed
+          IF <ls_link>-pr_status <> lv_new_status.
+            update_pr_status(
+              iv_parent_request = <ls_link>-parent_request
+              iv_pr_id          = <ls_link>-pr_id
+              iv_pr_status      = lv_new_status ).
+            lv_updated_count = lv_updated_count + 1.
+          ENDIF.
+
+        CATCH zcx_abapgit_exception INTO DATA(lx_error).
+          MESSAGE |Failed to sync PR { <ls_link>-pr_id }: { lx_error->get_text( ) }| TYPE 'W'.
+      ENDTRY.
+    ENDLOOP.
+
+    MESSAGE |Sync completed. { lv_updated_count } PR(s) updated out of { lines( lt_links ) }| TYPE 'S'.
+
+  ENDMETHOD.
+  METHOD get_github_pr_status.
+
+    DATA: lv_user         TYPE string,
+          lv_repo         TYPE string,
+          lv_auth         TYPE string,
+          lv_api_key      TYPE string,
+          li_http_agent   TYPE REF TO zif_abapgit_http_agent,
+          li_github_pr    TYPE REF TO zcl_abapgit_pr_enum_github.
+
+    " Initialize return value
+    rv_status = c_pr_status-open.
 
     TRY.
         " Extract user/repo from URL (for GitHub: https://github.com/user/repo.git)
@@ -195,8 +237,7 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
           SUBMATCHES lv_user lv_repo.
 
         IF sy-subrc <> 0.
-          MESSAGE 'Invalid GitHub URL format' TYPE 'W'.
-          RETURN.
+          zcx_abapgit_exception=>raise( |Invalid GitHub URL format: { iv_repo_url }| ).
         ENDIF.
 
         " Clean repository name (remove .git extension if present)
@@ -205,16 +246,24 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
           regex = '\.git$'
           with  = '' ).
 
-        " Check if authentication is available for GitHub
-        lv_auth = zcl_abapgit_login_manager=>get( iv_repo_url ).
-        IF lv_auth IS INITIAL.
-          " Try with git URL format
-          lv_auth = zcl_abapgit_login_manager=>get( |https://github.com/{ lv_user }/{ lv_repo }.git| ).
+        " Get GitHub API key from TVARVC
+        SELECT SINGLE low FROM tvarvc
+          INTO @lv_api_key
+          WHERE name = 'ZGIT_API_KEY'
+            AND type = 'P'.
+
+        IF sy-subrc <> 0 OR lv_api_key IS INITIAL.
+          zcx_abapgit_exception=>raise( 'GitHub API key not found in TVARVC table (ZGIT_API_KEY)' ).
         ENDIF.
 
+        " Set authentication using API key
+        lv_auth = zcl_abapgit_login_manager=>set(
+          iv_uri      = iv_repo_url
+          iv_username = 'vaibhago_cisco'
+          iv_password = lv_api_key ).
+
         IF lv_auth IS INITIAL.
-          MESSAGE 'No GitHub authentication found. Please configure GitHub credentials first.' TYPE 'W'.
-          RETURN.
+          zcx_abapgit_exception=>raise( 'Failed to set GitHub authentication' ).
         ENDIF.
 
         " Create GitHub PR provider with authentication
@@ -223,22 +272,15 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
           iv_user_and_repo = |{ lv_user }/{ lv_repo }|
           ii_http_agent    = li_http_agent ).
 
-        " Update status for each linked PR
-        LOOP AT lt_links ASSIGNING <ls_link>.
-          " Get detailed PR status from GitHub API
-          lv_new_status = li_github_pr->get_pr_detailed_status( CONV i( <ls_link>-pr_id ) ).
+        " Get detailed PR status from GitHub API
+        rv_status = li_github_pr->get_pr_detailed_status( CONV i( iv_pr_id ) ).
 
-          " Update if status changed
-          IF <ls_link>-pr_status <> lv_new_status.
-            update_pr_status(
-              iv_parent_request = <ls_link>-parent_request
-              iv_pr_id          = <ls_link>-pr_id
-              iv_pr_status      = lv_new_status ).
-          ENDIF.
-        ENDLOOP.
-
-      CATCH zcx_abapgit_exception INTO lx_error.
-        MESSAGE |Failed to sync PR status with GitHub: { lx_error->get_text( ) }| TYPE 'W'.
+      CATCH zcx_abapgit_exception.
+        " Re-raise the exception with additional context
+        zcx_abapgit_exception=>raise( |Failed to fetch PR status for PR { iv_pr_id } from { iv_repo_url }| ).
+      CATCH cx_root INTO DATA(lx_root).
+        " Handle any other exceptions
+        zcx_abapgit_exception=>raise( |Unexpected error while fetching PR status: { lx_root->get_text( ) }| ).
     ENDTRY.
 
   ENDMETHOD.

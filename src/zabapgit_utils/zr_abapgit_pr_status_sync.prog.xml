@@ -3,7 +3,7 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <PROGDIR>
-    <NAME>ZR_ABAPGIT_PR_STATUS_DEMO</NAME>
+    <NAME>ZR_ABAPGIT_PR_STATUS_SYNC</NAME>
     <DBAPL>S</DBAPL>
     <DBNA>D$</DBNA>
     <SUBC>1</SUBC>
@@ -20,7 +20,7 @@
     </item>
     <item>
      <ID>R</ID>
-     <ENTRY>Pull Request Status Management</ENTRY>
+     <ENTRY>Pull Request Status Sync</ENTRY>
      <LENGTH>49</LENGTH>
     </item>
    </TPOOL>
