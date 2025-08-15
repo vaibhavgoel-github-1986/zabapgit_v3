@@ -11,7 +11,7 @@ PARAMETERS: p_treq   TYPE strkorr OBLIGATORY,
             p_action TYPE char10 DEFAULT 'DISPLAY'.
 
 SELECTION-SCREEN BEGIN OF BLOCK actions WITH FRAME TITLE TEXT-001.
-PARAMETERS: r_disp  RADIOBUTTON GROUP act DEFAULT 'X',
+  PARAMETERS: r_disp  RADIOBUTTON GROUP act DEFAULT 'X',
               r_creat RADIOBUTTON GROUP act,
               r_updat RADIOBUTTON GROUP act,
               r_sync  RADIOBUTTON GROUP act,
@@ -70,7 +70,14 @@ START-OF-SELECTION.
             WRITE: / 'Repository URL is required for sync'.
           ELSE.
             " Check if GitHub credentials are configured
-            DATA(lv_auth) = zcl_abapgit_login_manager=>get( p_url ).
+            zcl_abapgit_login_manager=>set(
+              EXPORTING
+                iv_uri      = ''
+                iv_username = 'vaibhav_cisco'
+                iv_password = ''
+              RECEIVING
+                rv_auth     = DATA(lv_auth)
+            ).
             IF lv_auth IS INITIAL.
               WRITE: / 'No GitHub authentication found.'.
               WRITE: / 'Please configure GitHub credentials first using abapGit repository settings.'.

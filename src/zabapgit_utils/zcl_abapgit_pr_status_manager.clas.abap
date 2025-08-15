@@ -211,7 +211,7 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
           " Try with git URL format
           lv_auth = zcl_abapgit_login_manager=>get( |https://github.com/{ lv_user }/{ lv_repo }.git| ).
         ENDIF.
-        
+
         IF lv_auth IS INITIAL.
           MESSAGE 'No GitHub authentication found. Please configure GitHub credentials first.' TYPE 'W'.
           RETURN.
