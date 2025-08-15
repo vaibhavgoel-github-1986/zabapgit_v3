@@ -5,21 +5,7 @@ CLASS zcl_abapgit_pr_status_manager DEFINITION
 
   PUBLIC SECTION.
 
-    TYPES:
-      BEGIN OF ty_pr_link,
-        parent_request TYPE strkorr,
-        pr_id          TYPE int8,
-        request_status TYPE trstatus,
-        pr_status      TYPE zde_pr_status,
-        created_by     TYPE ernam_ca,
-        created_on     TYPE erfda,
-        created_at     TYPE erzet_n,
-        changed_by     TYPE aendnam,
-        changed_on     TYPE aedat,
-        changed_at     TYPE aetim2_kk,
-      END OF ty_pr_link.
-
-    TYPES: ty_pr_links TYPE TABLE OF ty_pr_link.
+    TYPES: tt_pr_links TYPE TABLE OF zdt_pull_request with DEFAULT KEY.
 
     CONSTANTS:
       BEGIN OF c_pr_status,
@@ -52,7 +38,7 @@ CLASS zcl_abapgit_pr_status_manager DEFINITION
         iv_parent_request TYPE strkorr
         iv_pr_id          TYPE int8 OPTIONAL
       RETURNING
-        VALUE(rt_links)   TYPE ty_pr_links
+        VALUE(rt_links)   TYPE tt_pr_links
       RAISING
         zcx_abapgit_exception.
 
@@ -69,7 +55,6 @@ CLASS zcl_abapgit_pr_status_manager DEFINITION
         iv_repo_url       TYPE string
       RAISING
         zcx_abapgit_exception.
-
   PROTECTED SECTION.
   PRIVATE SECTION.
 
@@ -83,7 +68,8 @@ ENDCLASS.
 
 
 
-CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
+CLASS ZCL_ABAPGIT_PR_STATUS_MANAGER IMPLEMENTATION.
+
 
   METHOD create_pr_link.
 
@@ -121,6 +107,7 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD update_pr_status.
 
     DATA: ls_pr_link TYPE zdt_pull_request.
@@ -151,14 +138,18 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD get_pr_status.
 
-    SELECT * FROM zdt_pull_request
-      INTO CORRESPONDING FIELDS OF TABLE rt_links
-      WHERE parent_request = iv_parent_request
-        AND ( iv_pr_id IS INITIAL OR pr_id = iv_pr_id ).
+    SELECT *
+      FROM zdt_pull_request
+      WHERE parent_request = @iv_parent_request
+        AND ( pr_id IS INITIAL
+           OR pr_id = @iv_pr_id )
+          INTO TABLE @rt_links.
 
   ENDMETHOD.
+
 
   METHOD delete_pr_link.
 
@@ -174,16 +165,17 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD sync_with_github.
 
-    DATA: lt_links        TYPE ty_pr_links,
+    DATA: lt_links        TYPE tt_pr_links,
           li_github_pr    TYPE REF TO zcl_abapgit_pr_enum_github,
           li_http_agent   TYPE REF TO zif_abapgit_http_agent,
           lv_user         TYPE string,
           lv_repo         TYPE string,
           lv_new_status   TYPE zde_pr_status.
 
-    FIELD-SYMBOLS: <ls_link> TYPE ty_pr_link.
+    FIELD-SYMBOLS: <ls_link> TYPE zdt_pull_request.
 
     " Get all PR links for this transport request
     lt_links = get_pr_status( iv_parent_request ).
@@ -234,6 +226,7 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD get_transport_status.
 
     SELECT SINGLE trstatus FROM e070
@@ -245,5 +238,4 @@ CLASS zcl_abapgit_pr_status_manager IMPLEMENTATION.
     ENDIF.
 
   ENDMETHOD.
-
 ENDCLASS.
