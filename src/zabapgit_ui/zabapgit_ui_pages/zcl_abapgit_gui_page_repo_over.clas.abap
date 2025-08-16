@@ -1109,10 +1109,7 @@ CLASS ZCL_ABAPGIT_GUI_PAGE_REPO_OVER IMPLEMENTATION.
     ELSE.
       ro_toolbar->add(
         iv_txt = zcl_abapgit_gui_buttons=>refresh( )
-        iv_act = c_action-refresh_list
-        )->add(
-        iv_txt = zcl_abapgit_gui_buttons=>help( )
-        io_sub = zcl_abapgit_gui_menus=>help( ) ).
+        iv_act = c_action-refresh_list ).
     ENDIF.
 
     zcl_abapgit_gui_menus=>experimental( ro_toolbar ).
