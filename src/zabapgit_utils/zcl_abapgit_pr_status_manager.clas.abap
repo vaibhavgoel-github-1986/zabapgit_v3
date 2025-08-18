@@ -107,7 +107,18 @@ CLASS ZCL_ABAPGIT_PR_STATUS_MANAGER IMPLEMENTATION.
 
     INSERT zdt_pull_request FROM ls_pr_link.
     IF sy-subrc <> 0.
-      zcx_abapgit_exception=>raise( |Failed to insert entry in DB| ).
+      "Try Updating, if insert fails
+      UPDATE zdt_pull_request
+         SET request_status = ls_pr_link-request_status
+             pr_id          = ls_pr_link-pr_id
+             pr_status      = ls_pr_link-pr_status
+             changed_by     = ls_pr_link-changed_by
+             changed_on     = ls_pr_link-changed_on
+             changed_at     = ls_pr_link-changed_at
+       WHERE parent_request = iv_parent_request.
+      IF sy-subrc IS NOT INITIAL.
+        zcx_abapgit_exception=>raise( |Failed to insert entry in DB| ).
+      ENDIF.
     ENDIF.
 
     COMMIT WORK.

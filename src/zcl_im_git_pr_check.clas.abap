@@ -43,7 +43,10 @@ CLASS zcl_im_git_pr_check DEFINITION
 ENDCLASS.
 
 
-CLASS zcl_im_git_pr_check IMPLEMENTATION.
+
+CLASS ZCL_IM_GIT_PR_CHECK IMPLEMENTATION.
+
+
   METHOD if_ex_cts_request_check~check_before_release.
     DATA lv_repo_url TYPE string.
     DATA lv_is_main  TYPE abap_bool.
@@ -64,7 +67,7 @@ CLASS zcl_im_git_pr_check IMPLEMENTATION.
         " Initialize logging for main transport requests only
         mv_log_handle = zcl_abapgit_logging_utils=>create_application_log( iv_extnumber = CONV #( request )
                                                                            iv_object    = 'ZABAPGIT'
-                                                                           iv_subobject = 'PR_CHECK' ).
+                                                                           iv_subobject = 'TR_CHECK' ).
 
         zcl_abapgit_logging_utils=>write_application_log( iv_log_handle = mv_log_handle
                                                           iv_log_type   = 'I'
@@ -82,13 +85,6 @@ CLASS zcl_im_git_pr_check IMPLEMENTATION.
 
           MESSAGE 'Please maintain Github Repo URL in Config' TYPE 'E'.
         ENDIF.
-
-        " 3. Check PR requirements (existence, sync status, approval)
-        zcl_abapgit_logging_utils=>write_application_log(
-            iv_log_handle = mv_log_handle
-            iv_log_type   = 'I'
-            iv_message    = 'Starting PR requirements check'
-            iv_detail     = 'Validating PR status, sync with GitHub, and approval state' ).
 
         check_pr_requirements( iv_request  = request
                                iv_repo_url = lv_repo_url ).
@@ -125,6 +121,7 @@ CLASS zcl_im_git_pr_check IMPLEMENTATION.
     ENDTRY.
   ENDMETHOD.
 
+
   METHOD get_repo_url.
     " TODO: parameter IV_REQUEST is never used (ABAP cleaner)
 
@@ -138,16 +135,11 @@ CLASS zcl_im_git_pr_check IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
+
   METHOD check_pr_requirements.
     DATA lt_pr_links  TYPE zcl_abapgit_pr_status_manager=>tt_pr_links.
     DATA ls_pr_link   TYPE zdt_pull_request.
     DATA lv_error_msg TYPE string.
-
-    zcl_abapgit_logging_utils=>write_application_log(
-        iv_log_handle = mv_log_handle
-        iv_log_type   = 'I'
-        iv_message    = 'Syncing with GitHub to get latest PR status'
-        iv_detail     = |Request: { iv_request }, Repository: { iv_repo_url }| ).
 
     " Sync with GitHub and check PR status for each linked PR
     zcl_abapgit_pr_status_manager=>sync_with_github( iv_parent_request = iv_request
@@ -158,19 +150,12 @@ CLASS zcl_im_git_pr_check IMPLEMENTATION.
                                                       iv_message    = 'GitHub sync completed'
                                                       iv_detail     = 'PR status information updated from GitHub' ).
 
-    " Re-read the PR links after sync to get updated status
-    zcl_abapgit_logging_utils=>write_application_log( iv_log_handle = mv_log_handle
-                                                      iv_log_type   = 'I'
-                                                      iv_message    = 'Retrieving PR links for transport'
-                                                      iv_detail     = |Transport: { iv_request }| ).
-
     lt_pr_links = zcl_abapgit_pr_status_manager=>get_pr_tr_linkage( iv_request ).
 
     zcl_abapgit_logging_utils=>write_application_log(
         iv_log_handle = mv_log_handle
         iv_log_type   = 'I'
-        iv_message    = 'PR links retrieved'
-        iv_detail     = |Found { lines( lt_pr_links ) } PR link(s) for transport| ).
+        iv_message    = 'Refreshed PR links.' ).
 
     " Check the PR Status
     READ TABLE lt_pr_links INTO ls_pr_link
@@ -193,8 +178,8 @@ CLASS zcl_im_git_pr_check IMPLEMENTATION.
         zcl_abapgit_logging_utils=>write_application_log(
             iv_log_handle = mv_log_handle
             iv_log_type   = 'E'
-            iv_message    = 'PR is not merged - blocking release'
-            iv_detail     = |PR #{ ls_pr_link-pr_id } status: { ls_pr_link-pr_status }| ).
+            iv_message    = |Pull Request #{ ls_pr_link-pr_id } is not closed/merged.|
+            iv_detail     = |Current PR Status: { ls_pr_link-pr_status }| ).
 
         MESSAGE lv_error_msg TYPE 'E'.
       ELSE.
@@ -207,6 +192,7 @@ CLASS zcl_im_git_pr_check IMPLEMENTATION.
     ENDIF.
 
   ENDMETHOD.
+
 
   METHOD update_transport_to_released.
     zcl_abapgit_logging_utils=>write_application_log(
@@ -244,17 +230,22 @@ CLASS zcl_im_git_pr_check IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
+
   METHOD if_ex_cts_request_check~check_before_add_objects.
   ENDMETHOD.
+
 
   METHOD if_ex_cts_request_check~check_before_changing_owner.
   ENDMETHOD.
 
+
   METHOD if_ex_cts_request_check~check_before_creation.
   ENDMETHOD.
 
+
   METHOD if_ex_cts_request_check~check_before_release_slin.
   ENDMETHOD.
+
 
   METHOD is_parent_request.
     DATA ls_request TYPE e070.

@@ -12,7 +12,7 @@ CLASS zcl_abapgit_logging_utils DEFINITION
 
     CLASS-METHODS create_application_log
       IMPORTING iv_object            TYPE balobj_d  DEFAULT 'ZABAPGIT'
-                iv_subobject         TYPE balsubobj DEFAULT 'PR_CHECK'
+                iv_subobject         TYPE balsubobj DEFAULT 'COMMIT'
                 iv_extnumber         TYPE balnrext  OPTIONAL
       RETURNING VALUE(rv_log_handle) TYPE balloghndl
       RAISING   zcx_abapgit_exception.

@@ -719,7 +719,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       WHEN c_event-commit.
         " Initialize application log
         TRY.
-            mv_log_handle = zcl_abapgit_logging_utils=>create_application_log( ).
+            DATA(lv_transport) = get_transport_from_stage( ).
+            mv_log_handle = zcl_abapgit_logging_utils=>create_application_log( iv_extnumber = CONV #( lv_transport ) ).
           CATCH zcx_abapgit_exception.
             " Continue even if logging fails
         ENDTRY.
