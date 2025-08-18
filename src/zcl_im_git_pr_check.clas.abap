@@ -8,6 +8,8 @@ CLASS zcl_im_git_pr_check DEFINITION
 
   PROTECTED SECTION.
 
+    DATA: mv_log_handle TYPE balloghndl.
+
     CONSTANTS:
       BEGIN OF c_request_type,
         workbench    TYPE trfunction VALUE 'K',
@@ -46,16 +48,18 @@ CLASS zcl_im_git_pr_check DEFINITION
         !iv_request TYPE trkorr
       RAISING
         zcx_abapgit_exception .
+
 ENDCLASS.
 
 
 
-CLASS ZCL_IM_GIT_PR_CHECK IMPLEMENTATION.
+CLASS zcl_im_git_pr_check IMPLEMENTATION.
 
 
   METHOD if_ex_cts_request_check~check_before_release.
 
-    DATA: lv_repo_url TYPE string.
+    DATA: lv_repo_url TYPE string,
+          lv_is_main  TYPE abap_bool.
 
     TRY.
         " Skip for Transport of Copies
@@ -64,26 +68,88 @@ CLASS ZCL_IM_GIT_PR_CHECK IMPLEMENTATION.
         ENDIF.
 
         " 1. Check if its a Parent TR
-        IF is_parent_request( iv_request = request ) = abap_false.
+        lv_is_main = is_parent_request( iv_request = request ).
+        IF lv_is_main = abap_false.
           " Skip checks for non-main workbench requests (customizing, transport of copies, etc.)
           RETURN.
         ENDIF.
 
+        " Initialize logging for main transport requests only
+        mv_log_handle = zcl_abapgit_logging_utils=>create_application_log(
+          iv_extnumber = request
+          iv_object = 'ZABAPGIT'
+          iv_subobject = 'PR_CHECK' ).
+        
+        zcl_abapgit_logging_utils=>write_application_log(
+          iv_log_handle = mv_log_handle
+          iv_log_type = 'I'
+          iv_message  = 'PR Check BADI started for main transport'
+          iv_detail   = |Transport: { request }, Type: { type }| ).
+
         " 2. Get repository URL for this transport request
+        zcl_abapgit_logging_utils=>write_application_log(
+          iv_log_handle = mv_log_handle
+          iv_log_type = 'I'
+          iv_message  = 'Getting repository URL from configuration'
+          iv_detail   = 'Checking TVARVC table for ZGIT_REPO_URL' ).
+
         lv_repo_url = get_repo_url( request ).
         IF lv_repo_url IS INITIAL.
+          zcl_abapgit_logging_utils=>write_application_log(
+            iv_log_handle = mv_log_handle
+            iv_log_type = 'E'
+            iv_message  = 'Repository URL not configured'
+            iv_detail   = 'ZGIT_REPO_URL entry missing in TVARVC table' ).
           MESSAGE 'Please maintain Github Repo URL in Config' TYPE 'E'.
+        ELSE.
+          zcl_abapgit_logging_utils=>write_application_log(
+            iv_log_handle = mv_log_handle
+            iv_log_type = 'S'
+            iv_message  = 'Repository URL retrieved successfully'
+            iv_detail   = |URL: { lv_repo_url }| ).
         ENDIF.
 
         " 3. Check PR requirements (existence, sync status, approval)
+        zcl_abapgit_logging_utils=>write_application_log(
+          iv_log_handle = mv_log_handle
+          iv_log_type = 'I'
+          iv_message  = 'Starting PR requirements check'
+          iv_detail   = 'Validating PR status, sync with GitHub, and approval state' ).
+
         check_pr_requirements(
           iv_request  = request
           iv_repo_url = lv_repo_url ).
 
+        zcl_abapgit_logging_utils=>write_application_log(
+          iv_log_handle = mv_log_handle
+          iv_log_type = 'S'
+          iv_message  = 'PR requirements check completed successfully'
+          iv_detail   = 'All PR validations passed' ).
+
         " 4. Update transport status to released in our tracking table
+        zcl_abapgit_logging_utils=>write_application_log(
+          iv_log_handle = mv_log_handle
+          iv_log_type = 'I'
+          iv_message  = 'Updating transport status to Released'
+          iv_detail   = 'Updating ZDT_PULL_REQUEST table' ).
+
         update_transport_to_released( request ).
 
+        zcl_abapgit_logging_utils=>write_application_log(
+          iv_log_handle = mv_log_handle
+          iv_log_type = 'S'
+          iv_message  = 'PR Check BADI completed successfully'
+          iv_detail   = |Transport { request } validation completed| ).
+
       CATCH cx_root INTO DATA(lx_root).
+        " Log the error if logging is available
+        IF mv_log_handle IS NOT INITIAL.
+          zcl_abapgit_logging_utils=>write_application_log(
+            iv_log_handle = mv_log_handle
+            iv_log_type = 'E'
+            iv_message  = 'Unexpected error during PR check'
+            iv_detail   = |Error: { lx_root->get_text( ) }| ).
+        ENDIF.
         " Handle any unexpected errors
         MESSAGE |Unexpected error during PR check: { lx_root->get_text( ) }| TYPE 'E'.
     ENDTRY.
@@ -108,34 +174,91 @@ CLASS ZCL_IM_GIT_PR_CHECK IMPLEMENTATION.
   METHOD check_pr_requirements.
 
     DATA: lt_pr_links TYPE zcl_abapgit_pr_status_manager=>tt_pr_links,
-          ls_pr_link  TYPE zdt_pull_request.
+          ls_pr_link  TYPE zdt_pull_request,
+          lv_error_msg TYPE string.
+
+    zcl_abapgit_logging_utils=>write_application_log(
+      iv_log_handle = mv_log_handle
+      iv_log_type = 'I'
+      iv_message  = 'Syncing with GitHub to get latest PR status'
+      iv_detail   = |Request: { iv_request }, Repository: { iv_repo_url }| ).
 
     " Sync with GitHub and check PR status for each linked PR
     zcl_abapgit_pr_status_manager=>sync_with_github(
       iv_parent_request = iv_request
       iv_repo_url       = iv_repo_url ).
 
+    zcl_abapgit_logging_utils=>write_application_log(
+      iv_log_handle = mv_log_handle
+      iv_log_type = 'S'
+      iv_message  = 'GitHub sync completed'
+      iv_detail   = 'PR status information updated from GitHub' ).
+
     " Re-read the PR links after sync to get updated status
+    zcl_abapgit_logging_utils=>write_application_log(
+      iv_log_handle = mv_log_handle
+      iv_log_type = 'I'
+      iv_message  = 'Retrieving PR links for transport'
+      iv_detail   = |Transport: { iv_request }| ).
+
     lt_pr_links = zcl_abapgit_pr_status_manager=>get_pr_tr_linkage( iv_request ).
+
+    zcl_abapgit_logging_utils=>write_application_log(
+      iv_log_handle = mv_log_handle
+      iv_log_type = 'I'
+      iv_message  = 'PR links retrieved'
+      iv_detail   = |Found { lines( lt_pr_links ) } PR link(s) for transport| ).
 
     " Check the PR Status
     READ TABLE lt_pr_links INTO ls_pr_link
       WITH KEY parent_request = iv_request.
     IF sy-subrc = 0.
+      zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
+        iv_log_type = 'I'
+        iv_message  = 'Checking PR status for release approval'
+        iv_detail   = |PR ID: { ls_pr_link-pr_id }, Status: { ls_pr_link-pr_status }| ).
+
       IF ls_pr_link-pr_status = zcl_abapgit_pr_status_manager=>c_pr_status-open OR
         ls_pr_link-pr_status = zcl_abapgit_pr_status_manager=>c_pr_status-draft OR
         ls_pr_link-pr_status = zcl_abapgit_pr_status_manager=>c_pr_status-changes.
-        DATA(lv_error_msg) =
+        
+        lv_error_msg =
           |Pull Request #{ ls_pr_link-pr_id } | &&
           |is still OPEN. Please ensure PR is merged before release.|.
+        
+        zcl_abapgit_logging_utils=>write_application_log(
+          iv_log_handle = mv_log_handle
+          iv_log_type = 'E'
+          iv_message  = 'PR is not merged - blocking release'
+          iv_detail   = |PR #{ ls_pr_link-pr_id } status: { ls_pr_link-pr_status }| ).
+        
         MESSAGE lv_error_msg TYPE 'E'.
+      ELSE.
+        zcl_abapgit_logging_utils=>write_application_log(
+          iv_log_handle = mv_log_handle
+          iv_log_type = 'S'
+          iv_message  = 'PR status validation passed'
+          iv_detail   = |PR #{ ls_pr_link-pr_id } is merged or closed| ).
       ENDIF.
+    ELSE.
+      zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
+        iv_log_type = 'W'
+        iv_message  = 'No PR links found for transport'
+        iv_detail   = |Transport { iv_request } has no associated PRs| ).
     ENDIF.
 
   ENDMETHOD.
 
 
   METHOD update_transport_to_released.
+
+    zcl_abapgit_logging_utils=>write_application_log(
+      iv_log_handle = mv_log_handle
+      iv_log_type = 'I'
+      iv_message  = 'Updating PR tracking table status'
+      iv_detail   = |Setting transport { iv_request } status to Released| ).
 
     " Update all PR links for this transport to reflect released status
     UPDATE zdt_pull_request
@@ -146,9 +269,21 @@ CLASS ZCL_IM_GIT_PR_CHECK IMPLEMENTATION.
       WHERE parent_request = @iv_request.
 
     IF sy-subrc = 0.
+      zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
+        iv_log_type = 'S'
+        iv_message  = 'Transport status updated successfully'
+        iv_detail   = |{ sy-dbcnt } PR record(s) updated in ZDT_PULL_REQUEST| ).
+      
       COMMIT WORK.
       MESSAGE |Transport status updated to Released in PR tracking table| TYPE 'S'.
     ELSE.
+      zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
+        iv_log_type = 'W'
+        iv_message  = 'No PR records found to update'
+        iv_detail   = |Transport { iv_request } has no entries in ZDT_PULL_REQUEST| ).
+      
       " Don't fail the release for this - just log a warning
       MESSAGE |Warning: Could not update transport status in PR tracking table| TYPE 'W'.
     ENDIF.
@@ -194,4 +329,5 @@ CLASS ZCL_IM_GIT_PR_CHECK IMPLEMENTATION.
     ENDIF.
 
   ENDMETHOD.
+
 ENDCLASS.

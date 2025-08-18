@@ -127,18 +127,6 @@ CLASS zcl_abapgit_gui_page_commit DEFINITION
         iv_pr_body       TYPE string
       RAISING
         zcx_abapgit_exception.
-    METHODS write_application_log
-      IMPORTING
-        iv_log_type    TYPE c DEFAULT 'I'
-        iv_message     TYPE string
-        iv_detail      TYPE string OPTIONAL
-      RAISING
-        zcx_abapgit_exception.
-    METHODS create_application_log
-      RETURNING
-        VALUE(rv_log_handle) TYPE balloghndl
-      RAISING
-        zcx_abapgit_exception.
     METHODS get_transport_from_stage
       RETURNING
         VALUE(rv_transport) TYPE string.
@@ -236,7 +224,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
 
     " Get Reviewers from TVARVC table
     MESSAGE |Fetching reviewers from TVARVC table...| TYPE 'S'.
-    write_application_log(
+    zcl_abapgit_logging_utils=>write_application_log(
+      iv_log_handle = mv_log_handle
       iv_log_type = 'I'
       iv_message  = 'Fetching reviewers from TVARVC table'
       iv_detail   = 'Table: TVARVC, Name: ZGIT_REVIEWER' ).
@@ -251,7 +240,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       ENDLOOP.
       MESSAGE |Found { lines( lt_reviewers ) } reviewer(s) in configuration| TYPE 'S'.
 
-      write_application_log(
+      zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
         iv_log_type = 'I'
         iv_message  = 'Reviewers found in configuration'
         iv_detail   = |Count: { lines( lt_reviewers ) }| ).
@@ -272,13 +262,15 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       " If current user was the only reviewer, add default
       APPEND 'sekanaga_cisco' TO lt_reviewers.
       MESSAGE |Current user removed from reviewers, defaulting to sekanaga_cisco| TYPE 'W'.
-      write_application_log(
+      zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
         iv_log_type = 'W'
         iv_message  = 'Current user was only reviewer, using default'
         iv_detail   = |User: { lv_current_user_cisco }, Default: sekanaga_cisco| ).
     ELSE.
       MESSAGE |Current user ({ lv_current_user_cisco }) excluded from reviewer list| TYPE 'S'.
-      write_application_log(
+      zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
         iv_log_type = 'S'
         iv_message  = 'Current user excluded from reviewers'
         iv_detail   = |User: { lv_current_user_cisco }, Remaining reviewers: { lines( lt_reviewers ) }| ).
@@ -288,7 +280,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         " Create HTTP agent
         li_http_agent = zcl_abapgit_http_agent=>create( ).
 
-        write_application_log(
+        zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
           iv_log_type = 'I'
           iv_message  = 'HTTP agent created for GitHub API'
           iv_detail   = 'Ready for PR creation' ).
@@ -302,7 +295,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         " Step 1: Create pull request as draft using form data
         MESSAGE |Creating pull request for branch { lv_head_branch }...| TYPE 'S'.
 
-        write_application_log(
+        zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
           iv_log_type = 'I'
           iv_message  = 'Starting pull request creation'
           iv_detail   = |{ lv_head_branch } -> | &&
@@ -314,7 +308,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         DATA(lv_sanitized_body) = escape_json_string( iv_pr_body ).
 
         " Log the JSON escaping process for debugging
-        write_application_log(
+        zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
           iv_log_type = 'I'
           iv_message  = 'PR body sanitized for JSON'
           iv_detail   = |Original: { strlen( iv_pr_body ) } chars, Sanitized: { strlen( lv_sanitized_body ) } chars| ).
@@ -326,7 +321,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
           iv_base  = zcl_abapgit_git_branch_utils=>get_display_name( iv_target_branch ) ).
 
         MESSAGE |Pull request #{ lv_pr_number } created successfully| TYPE 'S'.
-        write_application_log(
+        zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
           iv_log_type = 'S'
           iv_message  = 'Pull request created successfully'
           iv_detail   = |PR Number: { lv_pr_number }, Title: { iv_pr_title }| ).
@@ -340,18 +336,21 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
                 iv_pr_id          = CONV int8( lv_pr_number )
                 iv_pr_status      = zcl_abapgit_pr_status_manager=>c_pr_status-open ).
 
-              write_application_log(
+              zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
                 iv_log_type = 'I'
                 iv_message  = 'PR linked to transport request'
                 iv_detail   = |Transport: { lv_transport }, PR: { lv_pr_number }| ).
             ELSE.
-              write_application_log(
+              zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
                 iv_log_type = 'W'
                 iv_message  = 'No transport request found for PR linking'
                 iv_detail   = |PR: { lv_pr_number } created but not linked to transport| ).
             ENDIF.
           CATCH zcx_abapgit_exception INTO DATA(lx_link_error).
-            write_application_log(
+            zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
               iv_log_type = 'W'
               iv_message  = 'Failed to link PR to transport request'
               iv_detail   = |Error: { lx_link_error->get_text( ) }| ).
@@ -369,7 +368,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         ENDLOOP.
 
         MESSAGE |Assigning reviewers: { lv_reviewers_display }| TYPE 'S'.
-        write_application_log(
+        zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
           iv_log_type = 'S'
           iv_message  = 'Starting reviewer assignment'
           iv_detail   = |PR: { lv_pr_number }, Reviewers: { lv_reviewers_display }| ).
@@ -379,7 +379,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
           it_reviewers   = lt_reviewers ).
 
         MESSAGE |Reviewers assigned successfully to PR #{ lv_pr_number }| TYPE 'S'.
-        write_application_log(
+        zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
           iv_log_type = 'S'
           iv_message  = 'Reviewers assigned successfully'
           iv_detail   = |PR: { lv_pr_number }, Count: { lines( lt_reviewers ) }| ).
@@ -388,7 +389,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         MESSAGE |PR #{ lv_pr_number } created and assigned for code review|
          TYPE 'I' DISPLAY LIKE 'S'.
 
-        write_application_log(
+        zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
           iv_log_type = 'S'
           iv_message  = 'PR created successfully'
           iv_detail   = |PR #{ lv_pr_number } created successfully|  ).
@@ -396,13 +398,15 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
         " Setting PR 'Ready for Review'
         li_pr_provider->ready_for_review( lv_pr_number ).
 
-        write_application_log(
+        zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
          iv_log_type = 'S'
          iv_message  = |'PR was set 'Ready for Review'|
          iv_detail   = |PR #{ lv_pr_number } marked ready for review|  ).
 
       CATCH zcx_abapgit_exception INTO lx_error.
-        write_application_log(
+        zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
           iv_log_type = 'E'
           iv_message  = 'Error in pull request automation'
           iv_detail   = |Error: { lx_error->get_text( ) }| ).
@@ -814,7 +818,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
       WHEN c_event-commit.
         " Initialize application log
         TRY.
-            mv_log_handle = create_application_log( ).
+            mv_log_handle = zcl_abapgit_logging_utils=>create_application_log( ).
           CATCH zcx_abapgit_exception.
             " Continue even if logging fails
         ENDTRY.
@@ -824,7 +828,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
 
         IF mo_validation_log->is_empty( ) = abap_true.
 
-          write_application_log(
+          zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
             iv_log_type = 'S'
             iv_message  = 'Form validation successful'
             iv_detail   = 'Starting commit process' ).
@@ -849,7 +854,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
           IF lv_new_branch_name IS NOT INITIAL.
             " Validate the branch name follows feature/* pattern with uppercase transport
             IF lv_new_branch_name NP |feature/{ to_upper( sy-sysid ) }*|.
-              write_application_log(
+              zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
                 iv_log_type = 'E'
                 iv_message  = 'Invalid branch name pattern'
                 iv_detail   = |Branch: { lv_new_branch_name }, Expected pattern: feature/TRANSPORT_NUMBER| ).
@@ -858,7 +864,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
             ENDIF.
 
             " Create new branch
-            write_application_log(
+            zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
               iv_log_type = 'S'
               iv_message  = 'Creating new branch'
               iv_detail   = |Branch: { lv_new_branch_name }, From: { lv_selected_branch }| ).
@@ -868,13 +875,15 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
             " creates a new branch and automatically switches to it
             mi_repo_online->create_branch( lv_new_branch_name ).
 
-            write_application_log(
+            zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
               iv_log_type = 'S'
               iv_message  = 'New branch created successfully'
               iv_detail   = |Internal name: { lv_new_branch_name }| ).
           ENDIF.
 
-          write_application_log(
+          zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
             iv_log_type = 'S'
             iv_message  = 'Starting Git commit'
             iv_detail   = |Title: { ms_commit-comment }| ).
@@ -884,7 +893,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
             ii_repo_online = mi_repo_online
             io_stage       = mo_stage ).
 
-          write_application_log(
+          zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
             iv_log_type = 'S'
             iv_message  = 'Git commit completed successfully'
             iv_detail   = |Files committed: { lines( mt_stage ) }| ).
@@ -892,7 +902,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
           " If a new branch was created, switch back to main branch (pattern release/SHA*)
           IF lv_new_branch_name IS NOT INITIAL.
             TRY.
-                write_application_log(
+                zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
                   iv_log_type = 'S'
                   iv_message  = 'Finding main branch for PR target'
                   iv_detail   = |Looking for release/{ to_upper( sy-sysid ) }* pattern or main/master| ).
@@ -901,7 +912,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
                 lv_main_branch = find_main_branch( ).
 
                 IF lv_main_branch IS NOT INITIAL.
-                  write_application_log(
+                  zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
                     iv_log_type = 'S'
                     iv_message  = 'Switching back to main branch'
                     iv_detail   = |Target branch: { lv_main_branch }| ).
@@ -909,7 +921,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
                   " Switch back to main/release branch
                   mi_repo_online->select_branch( lv_main_branch ).
 
-                  write_application_log(
+                  zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
                     iv_log_type = 'S'
                     iv_message  = 'Starting automatic PR creation'
                     iv_detail   = |Source: { lv_new_branch_name } -> Target: { lv_main_branch }| ).
@@ -921,7 +934,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
                     iv_pr_title      = ms_commit-comment
                     iv_pr_body       = ms_commit-body ).
 
-                  write_application_log(
+                  zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
                     iv_log_type = 'S'
                     iv_message  = 'PR automation completed successfully'
                     iv_detail   = 'Process finished' ).
@@ -943,7 +957,8 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
               TRY.
                   lv_main_branch = find_main_branch( ).
 
-                  write_application_log(
+                  zcl_abapgit_logging_utils=>write_application_log(
+        iv_log_handle = mv_log_handle
                     iv_log_type = 'S'
                     iv_message  = 'Switching back to release branch'
                     iv_detail   = |{ lv_selected_branch } -> { lv_main_branch }| ).
@@ -1003,88 +1018,6 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     ri_html->add( render_stage_details( ) ).
     ri_html->add( '</div>' ).
     ri_html->add( '</div>' ).
-
-  ENDMETHOD.
-
-
-  METHOD create_application_log.
-
-    DATA: ls_log_header TYPE bal_s_log,
-          lv_transport  TYPE string.
-
-    " Extract transport number from staged files
-    lv_transport = get_transport_from_stage( ).
-
-    " Create log header with new structure
-    ls_log_header-extnumber = lv_transport.
-    ls_log_header-object    = 'ZABAPGIT'.
-    ls_log_header-subobject = 'ABAPGIT'.
-    ls_log_header-aldate    = sy-datum.
-    ls_log_header-altime    = sy-uzeit.
-    ls_log_header-aluser    = sy-uname.
-
-    " Create application log
-    CALL FUNCTION 'BAL_LOG_CREATE'
-      EXPORTING
-        i_s_log      = ls_log_header
-      IMPORTING
-        e_log_handle = rv_log_handle
-      EXCEPTIONS
-        OTHERS       = 1.
-
-    IF sy-subrc <> 0.
-      zcx_abapgit_exception=>raise( 'Failed to create application log' ).
-    ENDIF.
-
-    " Set the instance variable to avoid infinite loop
-    mv_log_handle = rv_log_handle.
-
-    " Write initial message with context (now safe since mv_log_handle is set)
-    write_application_log(
-      iv_log_type = 'I'
-      iv_message  = 'PR Automation process started'
-      iv_detail   = |Repo: { mi_repo_online->get_url( ) }| ).
-
-  ENDMETHOD.
-
-
-  METHOD write_application_log.
-
-    DATA: ls_msg TYPE bal_s_msg.
-
-    " Ensure log is created
-    IF mv_log_handle IS INITIAL.
-      mv_log_handle = create_application_log( ).
-    ENDIF.
-
-    " Prepare message
-    ls_msg-msgty = iv_log_type.
-    ls_msg-msgid = 'ZMC_LOG'.
-    ls_msg-msgno = '000'.
-    ls_msg-msgv1 = iv_message.
-    ls_msg-msgv2 = iv_detail.
-
-    " Write message to log
-    CALL FUNCTION 'BAL_LOG_MSG_ADD'
-      EXPORTING
-        i_log_handle = mv_log_handle
-        i_s_msg      = ls_msg
-      EXCEPTIONS
-        OTHERS       = 1.
-
-    " Save to database immediately for audit trail (especially critical for errors)
-    CALL FUNCTION 'BAL_DB_SAVE'
-      EXPORTING
-        i_client         = sy-mandt
-        i_save_all       = abap_true
-        i_t_log_handle   = VALUE bal_t_logh( ( mv_log_handle ) )
-      EXCEPTIONS
-        OTHERS           = 1.
-
-    " For error messages, commit the database transaction to ensure persistence
-    IF iv_log_type = 'E'.
-      COMMIT WORK.
-    ENDIF.
 
   ENDMETHOD.
 
