@@ -2,7 +2,7 @@ CLASS zcl_abapgit_logging_utils DEFINITION
   PUBLIC
   FINAL
   CREATE PUBLIC.
-
+ 
   PUBLIC SECTION.
     CLASS-METHODS:
       write_application_log
