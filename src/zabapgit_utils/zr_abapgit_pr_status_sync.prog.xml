@@ -67,6 +67,12 @@
     </item>
     <item>
      <ID>S</ID>
+     <KEY>R_EXCEP</KEY>
+     <ENTRY>Provide Exception</ENTRY>
+     <LENGTH>25</LENGTH>
+    </item>
+    <item>
+     <ID>S</ID>
      <KEY>R_SYNC</KEY>
      <ENTRY>Pull PR Status and Sync</ENTRY>
      <LENGTH>31</LENGTH>

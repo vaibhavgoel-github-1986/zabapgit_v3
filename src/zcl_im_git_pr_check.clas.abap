@@ -74,6 +74,19 @@ CLASS ZCL_IM_GIT_PR_CHECK IMPLEMENTATION.
                                                           iv_message    = 'PR Check BADI started for main transport'
                                                           iv_detail     = |Transport: { request }, Type: { type }| ).
 
+        " Check for Exception
+        SELECT SINGLE * FROM zdt_pull_request
+          INTO @DATA(lv_status)
+         WHERE parent_request EQ @request.
+        IF sy-subrc IS INITIAL.
+          IF lv_status EQ 'EXCEPTION'.
+            zcl_abapgit_logging_utils=>write_application_log( iv_log_handle = mv_log_handle
+                                                              iv_log_type   = 'I'
+                                                              iv_message    = 'TR was provided an exception to release'
+                                                              iv_detail     = |Transport: { request }, Type: { type }| ).
+            RETURN.
+          ENDIF.
+        ENDIF.
 
         lv_repo_url = get_repo_url( request ).
         IF lv_repo_url IS INITIAL.

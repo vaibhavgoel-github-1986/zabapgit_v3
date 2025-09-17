@@ -4,16 +4,17 @@
 REPORT zr_abapgit_pr_status_sync.
 
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
-PARAMETERS: p_treq   TYPE e070-strkorr OBLIGATORY,
-            p_prid   TYPE int8,
-            p_url    TYPE string LOWER CASE DEFAULT 'https://github.com/cisco-it-finance/sap-brim-github-repo.git'.
+  PARAMETERS: p_treq TYPE e070-strkorr OBLIGATORY,
+              p_prid TYPE int8,
+              p_url  TYPE string LOWER CASE DEFAULT 'https://github.com/cisco-it-finance/sap-brim-github-repo.git'.
 SELECTION-SCREEN END OF BLOCK b1.
 
 SELECTION-SCREEN BEGIN OF BLOCK actions WITH FRAME TITLE TEXT-002.
-PARAMETERS: r_disp  RADIOBUTTON GROUP act DEFAULT 'X',
+  PARAMETERS: r_disp  RADIOBUTTON GROUP act DEFAULT 'X',
               r_creat RADIOBUTTON GROUP act,
               r_updat RADIOBUTTON GROUP act,
               r_sync  RADIOBUTTON GROUP act,
+              r_excep RADIOBUTTON GROUP act,
               r_delet RADIOBUTTON GROUP act,
               r_test  RADIOBUTTON GROUP act.
 SELECTION-SCREEN END OF BLOCK actions.
@@ -51,6 +52,15 @@ START-OF-SELECTION.
               iv_pr_id = p_prid ).
             WRITE: / 'PR link created successfully for TR:', p_treq, 'PR:', p_prid.
           ENDIF.
+
+        WHEN r_excep.
+
+          zcl_abapgit_pr_status_manager=>create_pr_link(
+            iv_parent_request = p_treq
+            iv_pr_id          = 0
+            iv_pr_status      = 'EXCEPTION'
+          ).
+          WRITE: / 'TR was provided an exception successfully'.
 
         WHEN r_updat.
           " Update PR status
