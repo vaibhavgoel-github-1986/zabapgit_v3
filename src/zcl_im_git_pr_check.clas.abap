@@ -77,10 +77,10 @@ CLASS ZCL_IM_GIT_PR_CHECK IMPLEMENTATION.
 
         " Check for Exception
         SELECT SINGLE * FROM zdt_pull_request
-          INTO @DATA(lv_status)
+          INTO @DATA(ls_pull_request)
          WHERE parent_request EQ @request.
         IF sy-subrc IS INITIAL.
-          IF lv_status EQ 'EXCEPTION'.
+          IF ls_pull_request-pr_status EQ 'EXCEPTION'.
             zcl_abapgit_logging_utils=>write_application_log( iv_log_handle = mv_log_handle
                                                               iv_log_type   = 'I'
                                                               iv_message    = 'TR was provided an exception to release'
