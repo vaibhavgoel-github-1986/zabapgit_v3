@@ -205,7 +205,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
 
     SELECT * FROM tvarvc
       INTO TABLE @lt_users
-      WHERE name = 'ZGIT_REVIEWER'.
+      WHERE name = 'Z_CODE_REVIEWERS'.
     IF sy-subrc IS INITIAL.
       LOOP AT lt_users INTO ls_user.
         APPEND to_lower( ls_user-low ) TO lt_reviewers.
@@ -272,18 +272,19 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
 
         DATA lv_pr_number TYPE i.
 
-        " Sanitize PR body for JSON compatibility
+        " Sanitize PR title and body for JSON compatibility
+        DATA(lv_sanitized_title) = escape_json_string( iv_pr_title ).
         DATA(lv_sanitized_body) = escape_json_string( iv_pr_body ).
 
         " Log the JSON escaping process for debugging
         zcl_abapgit_logging_utils=>write_application_log(
             iv_log_handle = mv_log_handle
             iv_log_type   = 'I'
-            iv_message    = 'PR body sanitized for JSON'
-            iv_detail     = |Original: { strlen( iv_pr_body ) } chars, Sanitized: { strlen( lv_sanitized_body ) } chars| ).
+            iv_message    = 'PR title and body sanitized for JSON'
+            iv_detail     = |Title: { strlen( iv_pr_title ) } -> { strlen( lv_sanitized_title ) } chars, Body: { strlen( iv_pr_body ) } -> { strlen( lv_sanitized_body ) } chars| ).
 
         lv_pr_number = li_pr_provider->create_pull_request(
-                           iv_title = iv_pr_title
+                           iv_title = lv_sanitized_title
                            iv_body  = lv_sanitized_body
                            iv_head  = lv_head_branch
                            iv_base  = zcl_abapgit_git_branch_utils=>get_display_name( iv_target_branch ) ).
@@ -1040,3 +1041,4 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     rv_output = lv_temp.
   ENDMETHOD.
 ENDCLASS.
+
