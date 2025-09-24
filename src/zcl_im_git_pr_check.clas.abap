@@ -40,6 +40,7 @@ CLASS zcl_im_git_pr_check DEFINITION
       IMPORTING iv_request TYPE trkorr
       RAISING   zcx_abapgit_exception.
 
+private section.
 ENDCLASS.
 
 
