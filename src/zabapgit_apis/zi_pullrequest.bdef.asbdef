@@ -1,45 +1,42 @@
-managed implementation in class ZCL_BP_I_PULLREQUEST unique;
+managed implementation in class zbp_i_pullrequest unique;
 strict ( 2 );
 
 define behavior for ZI_PullRequest alias PullRequest
 persistent table zdt_pull_request
-etag master changed_at
-lock master total etag changed_at
-authorization master( global )
-
+etag master ChangedAt
+lock master
+authorization master ( instance )
 {
   field ( mandatory : create )
-   ParentRequest;
+  ParentRequest;
 
   field ( readonly )
-   Client,
-   CreatedBy,
-   CreatedOn,
-   CreatedAt,
-   ChangedBy,
-   ChangedOn,
-   ChangedAt;
+  CreatedBy,
+  CreatedOn,
+  CreatedAt,
+  ChangedBy,
+  ChangedOn,
+  ChangedAt;
 
   field ( readonly : update )
-   ParentRequest;
+  ParentRequest;
 
   create;
   update;
   delete;
 
   mapping for zdt_pull_request
-  {
-    Client = client;
-    ParentRequest = parent_request;
-    PrId = pr_id;
-    RequestStatus = request_status;
-    PrStatus = pr_status;
-    ExceptionReason = exception_reason;
-    CreatedBy = created_by;
-    CreatedOn = created_on;
-    CreatedAt = created_at;
-    ChangedBy = changed_by;
-    ChangedOn = changed_on;
-    ChangedAt = changed_at;
-  }
+    {
+      ParentRequest   = parent_request;
+      PrId            = pr_id;
+      RequestStatus   = request_status;
+      PrStatus        = pr_status;
+      ExceptionReason = exception_reason;
+      CreatedBy       = created_by;
+      CreatedOn       = created_on;
+      CreatedAt       = created_at;
+      ChangedBy       = changed_by;
+      ChangedOn       = changed_on;
+      ChangedAt       = changed_at;
+    }
 }

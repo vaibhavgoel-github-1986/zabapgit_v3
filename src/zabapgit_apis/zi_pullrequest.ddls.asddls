@@ -4,7 +4,6 @@
 define root view entity ZI_PullRequest
   as select from zdt_pull_request as PullRequest
 {
-  key client            as Client,
   key parent_request    as ParentRequest,
       pr_id             as PrId,
       request_status    as RequestStatus,
@@ -15,7 +14,7 @@ define root view entity ZI_PullRequest
       created_at        as CreatedAt,
       changed_by        as ChangedBy,
       changed_on        as ChangedOn,
-      changed_at        as ChangedAt,
+      changed_at        as ChangedAt
       /* Associations */
       /* Add associations here if needed */
 }

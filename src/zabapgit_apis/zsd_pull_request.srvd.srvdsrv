@@ -1,0 +1,4 @@
+@EndUserText.label: 'Pull Request API'
+define service ZSD_PULL_REQUEST {
+  expose ZC_PullRequest as PullRequest;
+}

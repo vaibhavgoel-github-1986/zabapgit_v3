@@ -5,7 +5,6 @@ define root view entity ZC_PullRequest
   provider contract transactional_query
   as projection on ZI_PullRequest
 {
-  key Client,
   key ParentRequest,
       PrId,
       RequestStatus,
