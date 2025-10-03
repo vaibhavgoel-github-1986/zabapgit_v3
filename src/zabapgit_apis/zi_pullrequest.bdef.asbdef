@@ -3,7 +3,7 @@ strict ( 2 );
 
 define behavior for ZI_PullRequest alias PullRequest
 persistent table zdt_pull_request
-etag master ChangedAt
+//etag master ChangedAt
 lock master
 authorization master ( instance )
 {
