@@ -1,0 +1,4 @@
+@EndUserText.label: 'Pull Request REST API'
+define service binding ZSB_PULLREQUEST_API {
+  expose ZSD_PULLREQUEST as 'PullRequestAPI';
+}
