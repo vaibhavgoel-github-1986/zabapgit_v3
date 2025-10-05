@@ -25,6 +25,8 @@ authorization master ( instance )
   update;
   delete;
 
+  determination setTimeStamp on save { create;}
+
   mapping for zdt_pull_request
     {
       ParentRequest   = parent_request;
