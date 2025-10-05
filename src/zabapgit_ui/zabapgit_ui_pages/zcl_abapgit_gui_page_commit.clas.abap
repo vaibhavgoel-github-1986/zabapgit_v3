@@ -120,6 +120,10 @@ CLASS zcl_abapgit_gui_page_commit DEFINITION
     METHODS escape_json_string
       IMPORTING iv_input         TYPE string
       RETURNING VALUE(rv_output) TYPE string.
+
+    METHODS is_development_branch
+      IMPORTING iv_branch_name              TYPE string
+      RETURNING VALUE(rv_is_development)    TYPE abap_bool.
 ENDCLASS.
 
 
@@ -849,22 +853,26 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
             ENDTRY.
           ELSE.
             " No new branch was created - check if we need to switch back to release branch
-            " This handles the case where user switched to feature branch for staging
-            IF lv_selected_branch CP |*feature/{ to_upper( sy-sysid ) }*|.
+            " This handles commits made directly on feature branches or other development branches
+            IF is_development_branch( lv_selected_branch ).
               TRY.
                   lv_main_branch = find_main_branch( ).
 
-                  zcl_abapgit_logging_utils=>write_application_log(
-                      iv_log_handle = mv_log_handle
-                      iv_log_type   = 'S'
-                      iv_message    = 'Switching back to release branch'
-                      iv_detail     = |{ lv_selected_branch } -> { lv_main_branch }| ).
+                  IF lv_main_branch IS NOT INITIAL.
+                    zcl_abapgit_logging_utils=>write_application_log(
+                        iv_log_handle = mv_log_handle
+                        iv_log_type   = 'S'
+                        iv_message    = 'Switching back to release branch'
+                        iv_detail     = |{ lv_selected_branch } -> { lv_main_branch }| ).
 
-                  mi_repo_online->select_branch( lv_main_branch ).
+                    mi_repo_online->select_branch( lv_main_branch ).
 
-                  lv_message = |Commit successful. Switched back to {
-                    zcl_abapgit_git_branch_utils=>get_display_name( lv_main_branch ) }|.
-                  MESSAGE lv_message TYPE 'S'.
+                    lv_message = |Commit successful. Switched back to {
+                      zcl_abapgit_git_branch_utils=>get_display_name( lv_main_branch ) }|.
+                    MESSAGE lv_message TYPE 'S'.
+                  ELSE.
+                    MESSAGE 'Commit successful. Could not find main branch to switch back to.' TYPE 'W'.
+                  ENDIF.
                 CATCH zcx_abapgit_exception INTO lx_error.
                   lv_message = |Commit successful. Error switching back to release branch: { lx_error->get_text( ) }|.
                   MESSAGE lv_message TYPE 'W'.
@@ -1039,6 +1047,20 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
     ENDDO.
 
     rv_output = lv_temp.
+  ENDMETHOD.
+
+  METHOD is_development_branch.
+    " Determine if a branch is a development/feature branch (not main/release)
+    DATA lv_branch_display TYPE string.
+    
+    " Get the display name (without refs/heads/ prefix)
+    lv_branch_display = zcl_abapgit_git_branch_utils=>get_display_name( iv_branch_name ).
+
+    " Check if this is NOT a main/release branch
+    " Main/release branches: main, master, release/*
+    rv_is_development = xsdbool( NOT ( lv_branch_display = 'main'
+                                    OR lv_branch_display = 'master'
+                                    OR lv_branch_display CP |release/*| ) ).
   ENDMETHOD.
 ENDCLASS.
 
