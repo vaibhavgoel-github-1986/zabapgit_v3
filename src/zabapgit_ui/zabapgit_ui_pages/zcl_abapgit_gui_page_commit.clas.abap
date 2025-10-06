@@ -1052,7 +1052,7 @@ CLASS zcl_abapgit_gui_page_commit IMPLEMENTATION.
   METHOD is_development_branch.
     " Determine if a branch is a development/feature branch (not main/release)
     DATA lv_branch_display TYPE string.
-    
+
     " Get the display name (without refs/heads/ prefix)
     lv_branch_display = zcl_abapgit_git_branch_utils=>get_display_name( iv_branch_name ).
 
