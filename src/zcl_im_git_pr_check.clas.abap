@@ -12,6 +12,7 @@ CLASS zcl_im_git_pr_check DEFINITION
       BEGIN OF c_request_type,
         workbench    TYPE trfunction VALUE 'K',
         tr_of_copies TYPE trfunction VALUE 'T',
+        customizing  TYPE trfunction VALUE 'W',
       END OF c_request_type.
 
     CONSTANTS:
@@ -39,7 +40,6 @@ CLASS zcl_im_git_pr_check DEFINITION
     METHODS update_transport_to_released
       IMPORTING iv_request TYPE trkorr
       RAISING   zcx_abapgit_exception.
-
 private section.
 ENDCLASS.
 
@@ -53,8 +53,9 @@ CLASS ZCL_IM_GIT_PR_CHECK IMPLEMENTATION.
     DATA lv_is_main  TYPE abap_bool.
 
     TRY.
-        " Skip for Transport of Copies
-        IF type = c_request_type-tr_of_copies.
+        " This check is only for Workbench Transports
+        IF type = c_request_type-tr_of_copies or
+           type = c_request_type-customizing.
           RETURN.
         ENDIF.
 
