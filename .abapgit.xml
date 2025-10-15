@@ -5,6 +5,12 @@
    <MASTER_LANGUAGE>E</MASTER_LANGUAGE>
    <STARTING_FOLDER>/src/</STARTING_FOLDER>
    <FOLDER_LOGIC>FULL</FOLDER_LOGIC>
+   <IGNORE>
+    <item>/src/zabapgit_apis/zsb_pullrequest_api.srvb.asbnd</item>
+    <item>/src/zabapgit_apis/zsb_pullrequest_api.srvb.xml</item>
+    <item>/src/zabapgit_apis/zsd_pullrequest.srvd.asdef</item>
+    <item>/src/zabapgit_apis/zsd_pullrequest.srvd.xml</item>
+   </IGNORE>
   </DATA>
  </asx:values>
 </asx:abap>
