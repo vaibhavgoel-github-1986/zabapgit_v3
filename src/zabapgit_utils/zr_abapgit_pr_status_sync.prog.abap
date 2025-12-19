@@ -10,7 +10,7 @@ SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
 SELECTION-SCREEN END OF BLOCK b1.
 
 SELECTION-SCREEN BEGIN OF BLOCK actions WITH FRAME TITLE TEXT-002.
-  PARAMETERS: r_disp  RADIOBUTTON GROUP act DEFAULT 'X',
+  PARAMETERS: r_disp  RADIOBUTTON GROUP act USER-COMMAND abc DEFAULT 'X',
               r_creat RADIOBUTTON GROUP act,
               r_updat RADIOBUTTON GROUP act,
               r_sync  RADIOBUTTON GROUP act,
@@ -18,6 +18,27 @@ SELECTION-SCREEN BEGIN OF BLOCK actions WITH FRAME TITLE TEXT-002.
               r_delet RADIOBUTTON GROUP act,
               r_test  RADIOBUTTON GROUP act.
 SELECTION-SCREEN END OF BLOCK actions.
+
+SELECTION-SCREEN BEGIN OF BLOCK b_excp WITH FRAME TITLE TEXT-003.
+  PARAMETERS: p_reason TYPE string LOWER CASE MODIF ID exc.
+SELECTION-SCREEN END OF BLOCK b_excp.
+
+AT SELECTION-SCREEN OUTPUT.
+
+  LOOP AT SCREEN.
+    IF screen-group1 = 'EXC'.
+      IF r_excep = abap_true.
+        screen-active = 1.
+        screen-input  = 1.
+      ELSE.
+        screen-active = 0.
+        screen-input  = 0.
+      ENDIF.
+
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
+
 
 START-OF-SELECTION.
 
@@ -54,11 +75,18 @@ START-OF-SELECTION.
           ENDIF.
 
         WHEN r_excep.
+          IF p_reason IS INITIAL.
+            MESSAGE 'Please provide the reason for exception'
+             TYPE 'S' DISPLAY LIKE 'E'.
+
+            LEAVE LIST-PROCESSING.
+          ENDIF.
 
           zcl_abapgit_pr_status_manager=>create_pr_link(
             iv_parent_request = p_treq
             iv_pr_id          = 0
             iv_pr_status      = 'EXCEPTION'
+            iv_exception_reason = p_reason
           ).
           WRITE: / 'TR was provided an exception successfully'.
 

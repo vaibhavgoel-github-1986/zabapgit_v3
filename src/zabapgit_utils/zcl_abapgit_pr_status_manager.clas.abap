@@ -19,9 +19,10 @@ CLASS zcl_abapgit_pr_status_manager DEFINITION
 
     CLASS-METHODS create_pr_link
       IMPORTING
-        iv_parent_request TYPE strkorr
-        iv_pr_id          TYPE int8
-        iv_pr_status      TYPE zde_pr_status DEFAULT c_pr_status-open
+        iv_parent_request   TYPE strkorr
+        iv_pr_id            TYPE int8
+        iv_pr_status        TYPE zde_pr_status DEFAULT c_pr_status-open
+        iv_exception_reason TYPE string OPTIONAL
       RAISING
         zcx_abapgit_exception.
 
@@ -58,8 +59,8 @@ CLASS zcl_abapgit_pr_status_manager DEFINITION
 
     CLASS-METHODS get_github_pr_status
       IMPORTING
-        iv_repo_url     TYPE string
-        iv_pr_id        TYPE int8
+        iv_repo_url      TYPE string
+        iv_pr_id         TYPE int8
       RETURNING
         VALUE(rv_status) TYPE zde_pr_status
       RAISING
@@ -98,6 +99,11 @@ CLASS ZCL_ABAPGIT_PR_STATUS_MANAGER IMPLEMENTATION.
     ls_pr_link-pr_id = iv_pr_id.
     ls_pr_link-request_status = get_transport_status( iv_parent_request ).
     ls_pr_link-pr_status = iv_pr_status.
+
+    IF iv_exception_reason IS SUPPLIED.
+      ls_pr_link-exception_reason = iv_exception_reason.
+    ENDIF.
+
     ls_pr_link-created_by = sy-uname.
     ls_pr_link-created_on = sy-datum.
     ls_pr_link-created_at = sy-uzeit.
@@ -191,11 +197,11 @@ CLASS ZCL_ABAPGIT_PR_STATUS_MANAGER IMPLEMENTATION.
 
   METHOD sync_with_github.
 
-    DATA: lt_links        TYPE tt_pr_links,
-          lv_new_status   TYPE zde_pr_status,
-          lv_updated_count TYPE i,
+    DATA: lt_links             TYPE tt_pr_links,
+          lv_new_status        TYPE zde_pr_status,
+          lv_updated_count     TYPE i,
           lv_current_tr_status TYPE trstatus,
-          lv_status_updated TYPE abap_bool.
+          lv_status_updated    TYPE abap_bool.
 
     FIELD-SYMBOLS: <ls_link> TYPE zdt_pull_request.
 
@@ -264,12 +270,12 @@ CLASS ZCL_ABAPGIT_PR_STATUS_MANAGER IMPLEMENTATION.
 
   METHOD get_github_pr_status.
 
-    DATA: lv_user         TYPE string,
-          lv_repo         TYPE string,
-          lv_auth         TYPE string,
-          lv_api_key      TYPE string,
-          li_http_agent   TYPE REF TO zif_abapgit_http_agent,
-          li_github_pr    TYPE REF TO zcl_abapgit_pr_enum_github.
+    DATA: lv_user       TYPE string,
+          lv_repo       TYPE string,
+          lv_auth       TYPE string,
+          lv_api_key    TYPE string,
+          li_http_agent TYPE REF TO zif_abapgit_http_agent,
+          li_github_pr  TYPE REF TO zcl_abapgit_pr_enum_github.
 
     " Initialize return value
     rv_status = c_pr_status-open.

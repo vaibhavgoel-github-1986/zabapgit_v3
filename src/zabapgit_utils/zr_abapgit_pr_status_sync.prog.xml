@@ -25,6 +25,12 @@
      <LENGTH>17</LENGTH>
     </item>
     <item>
+     <ID>I</ID>
+     <KEY>003</KEY>
+     <ENTRY>Exception Reason</ENTRY>
+     <LENGTH>26</LENGTH>
+    </item>
+    <item>
      <ID>R</ID>
      <ENTRY>Pull Request Status Sync</ENTRY>
      <LENGTH>24</LENGTH>
@@ -34,6 +40,12 @@
      <KEY>P_PRID</KEY>
      <ENTRY>Pull Request ID</ENTRY>
      <LENGTH>23</LENGTH>
+    </item>
+    <item>
+     <ID>S</ID>
+     <KEY>P_REASON</KEY>
+     <ENTRY>Exception Reason</ENTRY>
+     <LENGTH>24</LENGTH>
     </item>
     <item>
      <ID>S</ID>
