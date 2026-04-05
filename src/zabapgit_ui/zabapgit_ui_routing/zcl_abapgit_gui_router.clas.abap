@@ -531,7 +531,10 @@ CLASS ZCL_ABAPGIT_GUI_ROUTER IMPLEMENTATION.
     SELECT COUNT( * )
       FROM e070
       WHERE strkorr = @lv_trkorr
-        AND trstatus = 'D' or trstatus = 'L'
+* BOC MKRUPKA 04/02/2026
+*        AND trstatus = 'D' or trstatus = 'L'
+        AND ( trstatus = 'D' or trstatus = 'L' )
+* EOC MKRUPKA 04/02/2026
       INTO @lv_unreleased_tasks.
     IF lv_unreleased_tasks > 0.
       zcx_abapgit_exception=>raise( |Transport { lv_trkorr } has { lv_unreleased_tasks } | &
